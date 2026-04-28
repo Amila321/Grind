@@ -1,0 +1,17 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: grind-mysql-local
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: grind_local
+      MYSQL_USER: grind_user
+      MYSQL_PASSWORD: grind_password
+      MYSQL_ROOT_PASSWORD: root_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - grind_mysql_local_data:/var/lib/mysql
+
+volumes:
+  grind_mysql_local_data:
