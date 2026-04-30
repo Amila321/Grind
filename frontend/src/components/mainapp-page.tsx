@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import { FriendshipDashboard } from "./friendship/FriendshipDashboard";
 
 type StoredUser = {
     id: number;
@@ -22,36 +23,35 @@ export function MainAppPage() {
 
     return (
         <main className="min-h-screen p-8">
-            <div className="mx-auto max-w-3xl rounded-2xl border border-border bg-card p-8 shadow-sm">
-                <h1 className="text-2xl font-semibold">Main App</h1>
-
-                <div className="mt-6 space-y-4">
-                    <div>
-                        <h2 className="text-sm font-medium text-muted-foreground">
-                            Logged username
-                        </h2>
-                        <p className="text-lg font-semibold">
-                            {user?.username ?? "No user in localStorage"}
-                        </p>
+            <div className="mx-auto max-w-3xl space-y-8">
+                {/* User Profile Section */}
+                <div className="rounded-2xl border border-border bg-card p-8 shadow-sm">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-lg font-semibold text-primary-foreground">
+                                {user?.username?.charAt(0).toUpperCase() ?? "?"}
+                            </div>
+                            <div>
+                                <h1 className="text-xl font-semibold text-foreground">
+                                    {user?.username ?? "No user"}
+                                </h1>
+                                <p className="text-sm text-muted-foreground">
+                                    Welcome back
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={handleLogout}
+                            className="rounded-lg border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-secondary/80"
+                        >
+                            Logout
+                        </button>
                     </div>
-
-                    <div>
-                        <h2 className="text-sm font-medium text-muted-foreground">
-                            Token
-                        </h2>
-                        <pre className="mt-2 overflow-auto whitespace-pre-wrap break-all rounded-lg border border-border bg-muted p-4 text-xs">
-                            {token ?? "No token in localStorage"}
-                        </pre>
-                    </div>
-
-                    <button
-                        type="button"
-                        onClick={handleLogout}
-                        className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-                    >
-                        Logout
-                    </button>
                 </div>
+
+                {/* Friendship Dashboard */}
+                <FriendshipDashboard />
             </div>
         </main>
     );
