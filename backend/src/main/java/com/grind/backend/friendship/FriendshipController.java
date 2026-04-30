@@ -101,7 +101,7 @@ public class FriendshipController {
         }
     }
 
-    @DeleteMapping("/requests/{friendshipId}/reject")
+    @PatchMapping("/requests/{friendshipId}/reject")
     public ResponseEntity<?> rejectFriendRequest(
             @PathVariable Long friendshipId,
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader
@@ -109,12 +109,12 @@ public class FriendshipController {
         try {
             Long currentUserId = extractCurrentUserId(authorizationHeader);
 
-            friendshipService.rejectFriendRequest(
+            FriendshipDto friendship = friendshipService.rejectFriendRequest(
                     friendshipId,
                     currentUserId
             );
 
-            return ResponseEntity.noContent().build();
+            return ResponseEntity.ok(friendship);
 
         } catch (IllegalArgumentException exception) {
             return unauthorized(exception.getMessage());
@@ -123,33 +123,6 @@ public class FriendshipController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
                     "message", exception.getMessage()
             ));
-
-        } catch (NoSuchElementException exception) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
-                    "message", exception.getMessage()
-            ));
-
-        } catch (IllegalStateException exception) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "message", exception.getMessage()
-            ));
-        }
-    }
-
-    @DeleteMapping("/friends/{username}")
-    public ResponseEntity<?> removeFriend(
-            @PathVariable String username,
-            @RequestHeader(value = "Authorization", required = false) String authorizationHeader
-    ) {
-        try {
-            Long currentUserId = extractCurrentUserId(authorizationHeader);
-
-            friendshipService.removeFriend(currentUserId, username);
-
-            return ResponseEntity.noContent().build();
-
-        } catch (IllegalArgumentException exception) {
-            return unauthorized(exception.getMessage());
 
         } catch (NoSuchElementException exception) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(

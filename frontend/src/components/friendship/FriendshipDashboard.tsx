@@ -31,6 +31,7 @@ export function FriendshipDashboard() {
         sendInvitation,
         acceptInvitation,
         rejectInvitation,
+        removeFriend,
         refreshAll,
     } = useFriendship();
 
@@ -132,7 +133,7 @@ export function FriendshipDashboard() {
                 {/* Tab Content */}
                 <div className="p-6">
                     {activeTab === "friends" && (
-                        <FriendsList friends={friends} isLoading={isLoading} />
+                        <FriendsList friends={friends} isLoading={isLoading} onRemove={removeFriend} />
                     )}
                     {activeTab === "incoming" && (
                         <IncomingInvitations
