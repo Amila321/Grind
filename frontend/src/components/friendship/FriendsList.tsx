@@ -5,9 +5,10 @@ import { FriendCard } from "./FriendCard";
 interface FriendsListProps {
     friends: UserDto[];
     isLoading: boolean;
+    onRemove?: (username: string) => Promise<void>;
 }
 
-export function FriendsList({ friends, isLoading }: FriendsListProps) {
+export function FriendsList({ friends, isLoading, onRemove }: FriendsListProps) {
     if (isLoading) {
         return (
             <div className="space-y-3">
@@ -38,7 +39,7 @@ export function FriendsList({ friends, isLoading }: FriendsListProps) {
     return (
         <div className="space-y-3">
             {friends.map((friend) => (
-                <FriendCard key={friend.id} friend={friend} />
+                <FriendCard key={friend.id} friend={friend} onRemove={onRemove} />
             ))}
         </div>
     );

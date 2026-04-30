@@ -32,6 +32,7 @@ export function FriendshipDashboard() {
         acceptInvitation,
         rejectInvitation,
         refreshAll,
+        removeFriend,
     } = useFriendship();
 
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -132,7 +133,7 @@ export function FriendshipDashboard() {
                 {/* Tab Content */}
                 <div className="p-6">
                     {activeTab === "friends" && (
-                        <FriendsList friends={friends} isLoading={isLoading} />
+                        <FriendsList friends={friends} isLoading={isLoading} onRemove={removeFriend} />
                     )}
                     {activeTab === "incoming" && (
                         <IncomingInvitations
