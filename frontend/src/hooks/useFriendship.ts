@@ -128,7 +128,7 @@ export function useFriendship(): UseFriendshipReturn {
     const rejectInvitation = useCallback(
         async (friendshipId: number): Promise<void> => {
             const response = await fetch(`${API_URL}/api/friendships/requests/${friendshipId}/reject`, {
-                method: "PATCH",
+                method: "DELETE",
                 headers: getAuthHeaders(),
             });
 

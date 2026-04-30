@@ -68,7 +68,7 @@ public class FriendshipService {
     }
 
     @Transactional
-    public FriendshipDto rejectFriendRequest(Long friendshipId, Long currentUserId) {
+    public void rejectFriendRequest(Long friendshipId, Long currentUserId) {
         FriendshipModel friendship = getFriendshipById(friendshipId);
 
         validateUserIsAddressee(friendship, currentUserId);
@@ -77,11 +77,29 @@ public class FriendshipService {
             throw new IllegalStateException("Only pending friend requests can be rejected");
         }
 
-        friendship.setStatus(FriendshipStatus.REJECTED);
+        friendshipRepository.delete(friendship);
+    }
 
-        FriendshipModel savedFriendship = friendshipRepository.save(friendship);
+    @Transactional
+    public void removeFriend(Long currentUserId, String friendUsername) {
+        UserModel currentUser = getUserById(currentUserId);
+        UserModel friend = getUserByUsername(friendUsername);
 
-        return FriendshipDto.fromModel(savedFriendship);
+        if (Objects.equals(currentUser.getId(), friend.getId())) {
+            throw new IllegalStateException("You cannot remove yourself from friends");
+        }
+
+        FriendshipModel friendship = friendshipRepository
+                .findFriendshipBetweenUsers(currentUser, friend)
+                .orElseThrow(() -> new NoSuchElementException(
+                        "Friendship between users does not exist"
+                ));
+
+        if (friendship.getStatus() != FriendshipStatus.ACCEPTED) {
+            throw new IllegalStateException("Only accepted friendships can be removed");
+        }
+
+        friendshipRepository.delete(friendship);
     }
 
     @Transactional(readOnly = true)
