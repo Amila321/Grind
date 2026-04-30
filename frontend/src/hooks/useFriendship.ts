@@ -144,6 +144,29 @@ export function useFriendship(): UseFriendshipReturn {
         [fetchReceivedInvitations]
     );
 
+    const removeFriend = useCallback(
+        async (username: string): Promise<void> => {
+            const response = await fetch(
+                `${API_URL}/api/friendships/friends/${username}`,
+                {
+                    method: "DELETE",
+                    headers: getAuthHeaders(),
+                }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => null);
+                throw new Error(errorData?.message ?? "Failed to remove friend");
+            }
+
+            const friends = await fetchFriends();
+            setState((prev) => ({ ...prev, friends }));
+        },
+        [fetchFriends]
+    );
+
+
+
     useEffect(() => {
         refreshAll();
     }, [refreshAll]);
@@ -154,5 +177,6 @@ export function useFriendship(): UseFriendshipReturn {
         acceptInvitation,
         rejectInvitation,
         refreshAll,
+        removeFriend,
     };
 }

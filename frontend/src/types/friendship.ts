@@ -25,6 +25,7 @@ export type FriendshipActions = {
     acceptInvitation: (friendshipId: number) => Promise<void>;
     rejectInvitation: (friendshipId: number) => Promise<void>;
     refreshAll: () => Promise<void>;
+    removeFriend: (username: string) => Promise<void>;
 };
 
 export type UseFriendshipReturn = FriendshipState & FriendshipActions;
