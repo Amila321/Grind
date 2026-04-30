@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { UserMinus, X, Loader2 } from "lucide-react";
+import { UserMinus, X, Loader2, Trash2 } from "lucide-react";
 import type { UserDto } from "../../types/friendship";
 
 interface FriendCardProps {
@@ -69,31 +69,36 @@ export function FriendCard({ friend, onRemove }: FriendCardProps) {
                         <p className="mb-3 text-sm text-destructive">{error}</p>
                     )}
                     
-                    <div className="flex gap-2">
+                    <div className="flex gap-3">
                         <button
                             type="button"
                             onClick={handleRemove}
                             disabled={isRemoving}
-                            className="flex items-center justify-center gap-2 rounded-lg bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="group relative flex items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-red-500 to-rose-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-red-500/25 transition-all duration-200 hover:scale-[1.02] hover:shadow-lg hover:shadow-red-500/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
                             aria-label="Confirm removal"
                         >
-                            {isRemoving ? (
-                                <>
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    Removing...
-                                </>
-                            ) : (
-                                "Remove"
-                            )}
+                            <span className="absolute inset-0 bg-gradient-to-r from-red-600 to-rose-700 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+                            <span className="relative flex items-center gap-2">
+                                {isRemoving ? (
+                                    <>
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        Removing...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Trash2 className="h-4 w-4" />
+                                        Remove Friend
+                                    </>
+                                )}
+                            </span>
                         </button>
                         <button
                             type="button"
                             onClick={handleCancelConfirm}
                             disabled={isRemoving}
-                            className="flex items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
+                            className="flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-5 py-2.5 text-sm font-medium text-muted-foreground transition-all duration-200 hover:border-foreground/20 hover:bg-secondary hover:text-foreground active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                             aria-label="Cancel removal"
                         >
-                            <X className="h-4 w-4" />
                             Cancel
                         </button>
                     </div>
