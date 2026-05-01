@@ -12,6 +12,10 @@ import com.grind.backend.user.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.grind.backend.realtime.HabitRealtimeEvent;
+import com.grind.backend.realtime.RealtimeService;
+import com.grind.backend.user.UserDto;
+
 @Service
 public class HabitService {
 
@@ -19,17 +23,20 @@ public class HabitService {
     private final HabitRepository habitRepository;
     private final HabitCompletionRepository habitCompletionRepository;
     private final UserRepository userRepository;
+    private final RealtimeService realtimeService;
 
     public HabitService(
             HabitListRepository habitListRepository,
             HabitRepository habitRepository,
             HabitCompletionRepository habitCompletionRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            RealtimeService realtimeService
     ) {
         this.habitListRepository = habitListRepository;
         this.habitRepository = habitRepository;
         this.habitCompletionRepository = habitCompletionRepository;
         this.userRepository = userRepository;
+        this.realtimeService = realtimeService;
     }
 
     @Transactional
@@ -122,16 +129,31 @@ public class HabitService {
 
         LocalDate today = LocalDate.now();
 
-        return habitCompletionRepository
+        HabitCompletionModel completion = habitCompletionRepository
                 .findByHabitAndCompletionDate(habit, today)
                 .orElseGet(() -> {
-                    HabitCompletionModel completion = HabitCompletionModel.builder()
+                    HabitCompletionModel newCompletion = HabitCompletionModel.builder()
                             .habit(habit)
                             .completionDate(today)
                             .build();
 
-                    return habitCompletionRepository.save(completion);
+                    return habitCompletionRepository.save(newCompletion);
                 });
+
+        UserModel actor = habit.getHabitList().getUser();
+
+        HabitRealtimeEvent event = new HabitRealtimeEvent(
+                "HABIT_COMPLETED",
+                UserDto.fromModel(actor),
+                habit.getId(),
+                habit.getTitle(),
+                today,
+                true
+        );
+
+        realtimeService.publishHabitEventToUserAndFriends(actor, event);
+
+        return completion;
     }
 
     @Transactional
@@ -144,6 +166,19 @@ public class HabitService {
         LocalDate today = LocalDate.now();
 
         habitCompletionRepository.deleteByHabitAndCompletionDate(habit, today);
+
+        UserModel actor = habit.getHabitList().getUser();
+
+        HabitRealtimeEvent event = new HabitRealtimeEvent(
+                "HABIT_UNCOMPLETED",
+                UserDto.fromModel(actor),
+                habit.getId(),
+                habit.getTitle(),
+                today,
+                false
+        );
+
+        realtimeService.publishHabitEventToUserAndFriends(actor, event);
     }
 
     @Transactional
