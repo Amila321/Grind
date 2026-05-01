@@ -1,9 +1,10 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { FriendshipDashboard } from "./friendship/FriendshipDashboard";
 import { useHabits, type DashboardResponse, type DashboardHabitResponse } from "../hooks/useHabits";
 import { useDashboardRealtime, type HabitRealtimeEvent } from "../hooks/useDashboardRealtime";
-import { Loader2, Check, Circle, Plus, Wifi, WifiOff, AlertCircle } from "lucide-react";
+import { useDebouncedCallback } from "../hooks/useDebounce";
+import { Loader2, Check, Plus, Wifi, WifiOff, AlertCircle } from "lucide-react";
 
 type StoredUser = {
     id: number;
@@ -15,11 +16,13 @@ function HabitItem({
     isOwn,
     onToggle,
     isToggling,
+    isOptimistic,
 }: {
     habit: DashboardHabitResponse;
     isOwn: boolean;
     onToggle?: () => void;
     isToggling?: boolean;
+    isOptimistic?: boolean;
 }) {
     return (
         <li className="flex items-center gap-3 py-2">
@@ -32,7 +35,7 @@ function HabitItem({
                         habit.completedToday
                             ? "border-green-500 bg-green-500 text-white"
                             : "border-muted-foreground hover:border-primary"
-                    } ${isToggling ? "opacity-50" : ""}`}
+                    } ${isToggling ? "opacity-50" : ""} ${isOptimistic ? "opacity-70" : ""}`}
                     aria-label={habit.completedToday ? `Mark ${habit.title} as incomplete` : `Mark ${habit.title} as complete`}
                 >
                     {isToggling ? (
@@ -72,6 +75,7 @@ function UserHabitCard({
     isOwn,
     onToggleHabit,
     togglingHabitId,
+    optimisticHabitIds,
 }: {
     username: string;
     habits: DashboardHabitResponse[];
@@ -80,6 +84,7 @@ function UserHabitCard({
     isOwn: boolean;
     onToggleHabit?: (habitId: number, completedToday: boolean) => void;
     togglingHabitId?: number | null;
+    optimisticHabitIds?: Set<number>;
 }) {
     const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 
@@ -122,6 +127,7 @@ function UserHabitCard({
                             isOwn={isOwn}
                             onToggle={isOwn && onToggleHabit ? () => onToggleHabit(habit.id, habit.completedToday) : undefined}
                             isToggling={togglingHabitId === habit.id}
+                            isOptimistic={optimisticHabitIds?.has(habit.id)}
                         />
                     ))}
                 </ul>
@@ -159,26 +165,46 @@ export function MainAppPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [togglingHabitId, setTogglingHabitId] = useState<number | null>(null);
+    const [optimisticHabitIds, setOptimisticHabitIds] = useState<Set<number>>(new Set());
     const [lastEvent, setLastEvent] = useState<HabitRealtimeEvent | null>(null);
+    
+    // Prevent concurrent toggle operations on the same habit
+    const pendingTogglesRef = useRef<Set<number>>(new Set());
+    // Track if a dashboard fetch is in progress
+    const isFetchingRef = useRef(false);
 
     const token = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
     const user: StoredUser | null = storedUser ? JSON.parse(storedUser) : null;
 
     const loadDashboard = useCallback(async () => {
+        // Prevent concurrent fetches
+        if (isFetchingRef.current) {
+            return;
+        }
+        
+        isFetchingRef.current = true;
         try {
             setError(null);
             const data = await getDashboard();
             setDashboard(data);
+            // Clear optimistic state after successful fetch
+            setOptimisticHabitIds(new Set());
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to load dashboard");
+        } finally {
+            isFetchingRef.current = false;
         }
     }, [getDashboard]);
 
+    // Debounce dashboard reload on WebSocket events (300ms)
+    const debouncedLoadDashboard = useDebouncedCallback(loadDashboard, 300);
+
     const handleHabitEvent = useCallback((event: HabitRealtimeEvent) => {
         setLastEvent(event);
-        loadDashboard();
-    }, [loadDashboard]);
+        // Use debounced reload to batch rapid WebSocket events
+        debouncedLoadDashboard();
+    }, [debouncedLoadDashboard]);
 
     const { status: wsStatus } = useDashboardRealtime({
         userId: user?.id ?? null,
@@ -202,8 +228,36 @@ export function MainAppPage() {
     }, [token, user, navigate, loadDashboard]);
 
     async function handleToggleHabit(habitId: number, completedToday: boolean) {
+        // Prevent duplicate toggles for the same habit
+        if (pendingTogglesRef.current.has(habitId)) {
+            return;
+        }
+        
+        pendingTogglesRef.current.add(habitId);
         setTogglingHabitId(habitId);
         setError(null);
+
+        // Optimistic UI update
+        setDashboard((prev) => {
+            if (!prev) return prev;
+            
+            const newCompletedToday = !completedToday;
+            const updatedHabits = prev.currentUser.habits.map((h) =>
+                h.id === habitId ? { ...h, completedToday: newCompletedToday } : h
+            );
+            const newCompletedCount = updatedHabits.filter((h) => h.completedToday).length;
+            
+            return {
+                ...prev,
+                currentUser: {
+                    ...prev.currentUser,
+                    habits: updatedHabits,
+                    completedCount: newCompletedCount,
+                },
+            };
+        });
+        
+        setOptimisticHabitIds((prev) => new Set(prev).add(habitId));
 
         try {
             if (completedToday) {
@@ -211,11 +265,36 @@ export function MainAppPage() {
             } else {
                 await completeHabitToday(habitId);
             }
+            // Reload to get server state (removes optimistic flag)
             await loadDashboard();
         } catch (err) {
+            // Revert optimistic update on error
+            setDashboard((prev) => {
+                if (!prev) return prev;
+                
+                const revertedHabits = prev.currentUser.habits.map((h) =>
+                    h.id === habitId ? { ...h, completedToday: completedToday } : h
+                );
+                const revertedCompletedCount = revertedHabits.filter((h) => h.completedToday).length;
+                
+                return {
+                    ...prev,
+                    currentUser: {
+                        ...prev.currentUser,
+                        habits: revertedHabits,
+                        completedCount: revertedCompletedCount,
+                    },
+                };
+            });
             setError(err instanceof Error ? err.message : "Failed to update habit");
         } finally {
+            pendingTogglesRef.current.delete(habitId);
             setTogglingHabitId(null);
+            setOptimisticHabitIds((prev) => {
+                const next = new Set(prev);
+                next.delete(habitId);
+                return next;
+            });
         }
     }
 
@@ -227,7 +306,7 @@ export function MainAppPage() {
 
     if (isLoading) {
         return (
-            <main className="min-h-screen flex items-center justify-center">
+            <main className="min-h-screen flex items-center justify-center bg-background">
                 <div className="flex items-center gap-2 text-muted-foreground">
                     <Loader2 className="h-5 w-5 animate-spin" />
                     <span>Loading dashboard...</span>
@@ -239,7 +318,7 @@ export function MainAppPage() {
     const hasActiveHabits = dashboard?.currentUser?.habits && dashboard.currentUser.habits.length > 0;
 
     return (
-        <main className="min-h-screen p-8">
+        <main className="min-h-screen p-8 bg-background">
             <div className="mx-auto max-w-3xl space-y-6">
                 {/* Header with user info and logout */}
                 <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
@@ -292,7 +371,7 @@ export function MainAppPage() {
                 {!hasActiveHabits && (
                     <div className="rounded-xl border border-border bg-card p-8 text-center space-y-4">
                         <div className="flex justify-center">
-                            <Circle className="h-12 w-12 text-muted-foreground" />
+                            <div className="h-12 w-12 rounded-full border-2 border-muted-foreground" />
                         </div>
                         <div className="space-y-2">
                             <h2 className="text-lg font-semibold text-foreground">No Active Habits</h2>
@@ -332,6 +411,7 @@ export function MainAppPage() {
                             isOwn={true}
                             onToggleHabit={handleToggleHabit}
                             togglingHabitId={togglingHabitId}
+                            optimisticHabitIds={optimisticHabitIds}
                         />
                     </div>
                 )}

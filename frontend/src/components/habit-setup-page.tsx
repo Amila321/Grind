@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useHabits, type HabitResponse } from "../hooks/useHabits";
 import { Loader2, Plus, Trash2, Send } from "lucide-react";
@@ -28,17 +28,30 @@ export function HabitSetupPage() {
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
 
+    // Prevent concurrent operations
+    const pendingDeletesRef = useRef<Set<number>>(new Set());
+    const isInitializedRef = useRef(false);
+    const isFetchingRef = useRef(false);
+
     const token = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
     const user: StoredUser | null = storedUser ? JSON.parse(storedUser) : null;
 
     const loadDraftHabits = useCallback(async () => {
+        // Prevent concurrent fetches
+        if (isFetchingRef.current) {
+            return;
+        }
+        
+        isFetchingRef.current = true;
         try {
             setError(null);
             const draftHabits = await getDraftHabits();
             setHabits(draftHabits);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to load habits");
+        } finally {
+            isFetchingRef.current = false;
         }
     }, [getDraftHabits]);
 
@@ -47,6 +60,12 @@ export function HabitSetupPage() {
             navigate("/login");
             return;
         }
+
+        // Prevent double initialization
+        if (isInitializedRef.current) {
+            return;
+        }
+        isInitializedRef.current = true;
 
         async function initDraft() {
             setIsLoading(true);
@@ -65,43 +84,60 @@ export function HabitSetupPage() {
 
     async function handleAddHabit(e: React.FormEvent) {
         e.preventDefault();
-        if (!title.trim()) return;
+        if (!title.trim() || isAdding) return;
 
         setIsAdding(true);
         setError(null);
 
         try {
-            await addHabitToDraft({
+            const newHabit = await addHabitToDraft({
                 title: title.trim(),
                 description: description.trim() || undefined,
             });
+            // Optimistically add to list
+            setHabits((prev) => [...prev, newHabit]);
             setTitle("");
             setDescription("");
-            await loadDraftHabits();
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to add habit");
+            // Reload to sync state on error
+            await loadDraftHabits();
         } finally {
             setIsAdding(false);
         }
     }
 
     async function handleDeleteHabit(habitId: number) {
+        // Prevent duplicate delete requests
+        if (pendingDeletesRef.current.has(habitId)) {
+            return;
+        }
+        
+        pendingDeletesRef.current.add(habitId);
         setDeletingId(habitId);
         setError(null);
 
+        // Optimistic update - remove immediately
+        const previousHabits = habits;
+        setHabits((prev) => prev.filter((h) => h.id !== habitId));
+
         try {
             await deleteHabitFromDraft(habitId);
-            await loadDraftHabits();
         } catch (err) {
+            // Revert optimistic update on error
+            setHabits(previousHabits);
             setError(err instanceof Error ? err.message : "Failed to delete habit");
         } finally {
+            pendingDeletesRef.current.delete(habitId);
             setDeletingId(null);
         }
     }
 
     async function handlePublish() {
-        if (habits.length === 0) {
-            setError("Add at least one habit before publishing");
+        if (habits.length === 0 || isPublishing) {
+            if (habits.length === 0) {
+                setError("Add at least one habit before publishing");
+            }
             return;
         }
 
@@ -120,7 +156,7 @@ export function HabitSetupPage() {
 
     if (isLoading) {
         return (
-            <main className="min-h-screen flex items-center justify-center">
+            <main className="min-h-screen flex items-center justify-center bg-background">
                 <div className="flex items-center gap-2 text-muted-foreground">
                     <Loader2 className="h-5 w-5 animate-spin" />
                     <span>Loading draft habits...</span>
@@ -130,7 +166,7 @@ export function HabitSetupPage() {
     }
 
     return (
-        <main className="min-h-screen p-8">
+        <main className="min-h-screen p-8 bg-background">
             <div className="mx-auto max-w-2xl space-y-6">
                 {/* Header */}
                 <div className="text-center space-y-2">
@@ -211,7 +247,9 @@ export function HabitSetupPage() {
                             {habits.map((habit) => (
                                 <li
                                     key={habit.id}
-                                    className="flex items-start justify-between gap-4 rounded-lg border border-border bg-background p-4"
+                                    className={`flex items-start justify-between gap-4 rounded-lg border border-border bg-background p-4 transition-opacity ${
+                                        deletingId === habit.id ? "opacity-50" : ""
+                                    }`}
                                 >
                                     <div className="space-y-1 min-w-0 flex-1">
                                         <p className="font-medium text-foreground">{habit.title}</p>
@@ -225,7 +263,7 @@ export function HabitSetupPage() {
                                         type="button"
                                         onClick={() => handleDeleteHabit(habit.id)}
                                         disabled={deletingId === habit.id}
-                                        className="shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                                        className="shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
                                         aria-label={`Delete ${habit.title}`}
                                     >
                                         {deletingId === habit.id ? (
