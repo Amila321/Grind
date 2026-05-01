@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { FriendshipDashboard } from "./friendship/FriendshipDashboard";
 import { useHabits, type DashboardResponse, type DashboardHabitResponse } from "../hooks/useHabits";
@@ -139,7 +139,7 @@ function UserHabitCard({
 }
 
 function ConnectionStatus({ status }: { status: string }) {
-    const statusConfig = {
+    const statusConfig: Record<string, { icon: typeof Wifi; color: string; label: string; animate?: boolean }> = {
         CONNECTED: { icon: Wifi, color: "text-green-500", label: "Live" },
         CONNECTING: { icon: Loader2, color: "text-yellow-500", label: "Connecting", animate: true },
         DISCONNECTED: { icon: WifiOff, color: "text-muted-foreground", label: "Offline" },
@@ -175,7 +175,10 @@ export function MainAppPage() {
 
     const token = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
-    const user: StoredUser | null = storedUser ? JSON.parse(storedUser) : null;
+
+    const user: StoredUser | null = useMemo(() => {
+        return storedUser ? JSON.parse(storedUser) : null;
+    }, [storedUser]);
 
     const loadDashboard = useCallback(async () => {
         // Prevent concurrent fetches
@@ -225,7 +228,7 @@ export function MainAppPage() {
         }
 
         init();
-    }, [token, user, navigate, loadDashboard]);
+    }, [token, user?.id, navigate, loadDashboard]);
 
     async function handleToggleHabit(habitId: number, completedToday: boolean) {
         // Prevent duplicate toggles for the same habit

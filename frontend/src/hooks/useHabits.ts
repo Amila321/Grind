@@ -1,3 +1,4 @@
+import { useCallback, useMemo } from "react";
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
 
 export type HabitListStatus = "DRAFT" | "ACTIVE";
@@ -83,7 +84,7 @@ async function handleEmptyResponse(response: Response): Promise<void> {
 }
 
 export function useHabits() {
-    async function getOrCreateDraftList(): Promise<HabitListResponse> {
+    const getOrCreateDraftList = useCallback(async (): Promise<HabitListResponse> => {
         const response = await fetch(`${API_URL}/api/habit/habit-lists/draft`, {
             method: "POST",
             headers: {
@@ -92,9 +93,9 @@ export function useHabits() {
         });
 
         return handleResponse<HabitListResponse>(response);
-    }
+    }, []);
 
-    async function getDraftHabits(): Promise<HabitResponse[]> {
+    const getDraftHabits = useCallback(async (): Promise<HabitResponse[]> => {
         const response = await fetch(
             `${API_URL}/api/habit/habit-lists/draft/habits`,
             {
@@ -106,27 +107,28 @@ export function useHabits() {
         );
 
         return handleResponse<HabitResponse[]>(response);
-    }
+    }, []);
 
-    async function addHabitToDraft(
-        data: AddHabitRequest
-    ): Promise<HabitResponse> {
-        const response = await fetch(
-            `${API_URL}/api/habit/habit-lists/draft/habits`,
-            {
-                method: "POST",
-                headers: {
-                    ...getAuthHeaders(),
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(data),
-            }
-        );
+    const addHabitToDraft = useCallback(
+        async (data: AddHabitRequest): Promise<HabitResponse> => {
+            const response = await fetch(
+                `${API_URL}/api/habit/habit-lists/draft/habits`,
+                {
+                    method: "POST",
+                    headers: {
+                        ...getAuthHeaders(),
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(data),
+                }
+            );
 
-        return handleResponse<HabitResponse>(response);
-    }
+            return handleResponse<HabitResponse>(response);
+        },
+        []
+    );
 
-    async function deleteHabitFromDraft(habitId: number): Promise<void> {
+    const deleteHabitFromDraft = useCallback(async (habitId: number): Promise<void> => {
         const response = await fetch(
             `${API_URL}/api/habit/habit-lists/draft/habits/${habitId}`,
             {
@@ -138,9 +140,9 @@ export function useHabits() {
         );
 
         return handleEmptyResponse(response);
-    }
+    }, []);
 
-    async function publishDraftList(): Promise<HabitListResponse> {
+    const publishDraftList = useCallback(async (): Promise<HabitListResponse> => {
         const response = await fetch(
             `${API_URL}/api/habit/habit-lists/draft/publish`,
             {
@@ -152,9 +154,9 @@ export function useHabits() {
         );
 
         return handleResponse<HabitListResponse>(response);
-    }
+    }, []);
 
-    async function getActiveHabits(): Promise<HabitResponse[]> {
+    const getActiveHabits = useCallback(async (): Promise<HabitResponse[]> => {
         const response = await fetch(`${API_URL}/api/habit/habits/active`, {
             method: "GET",
             headers: {
@@ -163,25 +165,26 @@ export function useHabits() {
         });
 
         return handleResponse<HabitResponse[]>(response);
-    }
+    }, []);
 
-    async function completeHabitToday(
-        habitId: number
-    ): Promise<HabitCompletionResponse> {
-        const response = await fetch(
-            `${API_URL}/api/habit/habits/${habitId}/completions/today`,
-            {
-                method: "POST",
-                headers: {
-                    ...getAuthHeaders(),
-                },
-            }
-        );
+    const completeHabitToday = useCallback(
+        async (habitId: number): Promise<HabitCompletionResponse> => {
+            const response = await fetch(
+                `${API_URL}/api/habit/habits/${habitId}/completions/today`,
+                {
+                    method: "POST",
+                    headers: {
+                        ...getAuthHeaders(),
+                    },
+                }
+            );
 
-        return handleResponse<HabitCompletionResponse>(response);
-    }
+            return handleResponse<HabitCompletionResponse>(response);
+        },
+        []
+    );
 
-    async function uncompleteHabitToday(habitId: number): Promise<void> {
+    const uncompleteHabitToday = useCallback(async (habitId: number): Promise<void> => {
         const response = await fetch(
             `${API_URL}/api/habit/habits/${habitId}/completions/today`,
             {
@@ -193,9 +196,9 @@ export function useHabits() {
         );
 
         return handleEmptyResponse(response);
-    }
+    }, []);
 
-    async function getDashboard(): Promise<DashboardResponse> {
+    const getDashboard = useCallback(async (): Promise<DashboardResponse> => {
         const response = await fetch(`${API_URL}/api/dashboard`, {
             method: "GET",
             headers: {
@@ -204,17 +207,30 @@ export function useHabits() {
         });
 
         return handleResponse<DashboardResponse>(response);
-    }
+    }, []);
 
-    return {
-        getOrCreateDraftList,
-        getDraftHabits,
-        addHabitToDraft,
-        deleteHabitFromDraft,
-        publishDraftList,
-        getActiveHabits,
-        completeHabitToday,
-        uncompleteHabitToday,
-        getDashboard,
-    };
+    return useMemo(
+        () => ({
+            getOrCreateDraftList,
+            getDraftHabits,
+            addHabitToDraft,
+            deleteHabitFromDraft,
+            publishDraftList,
+            getActiveHabits,
+            completeHabitToday,
+            uncompleteHabitToday,
+            getDashboard,
+        }),
+        [
+            getOrCreateDraftList,
+            getDraftHabits,
+            addHabitToDraft,
+            deleteHabitFromDraft,
+            publishDraftList,
+            getActiveHabits,
+            completeHabitToday,
+            uncompleteHabitToday,
+            getDashboard,
+        ]
+    );
 }
