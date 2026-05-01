@@ -33,14 +33,24 @@ export function useDashboardRealtime({
                                      }: UseDashboardRealtimeProps) {
     const clientRef = useRef<Client | null>(null);
     const isMountedRef = useRef(true);
+    const onHabitEventRef = useRef(onHabitEvent);
+
+    // Keep callback ref updated without causing reconnection
+    useEffect(() => {
+        onHabitEventRef.current = onHabitEvent;
+    }, [onHabitEvent]);
 
     const [status, setStatus] = useState<ConnectionStatus>("DISCONNECTED");
     const [lastEvent, setLastEvent] = useState<HabitRealtimeEvent | null>(null);
 
     useEffect(() => {
+        isMountedRef.current = true;
+
         if (!enabled || userId === null) {
             return;
         }
+
+        setStatus("CONNECTING");
 
         const client = new Client({
             webSocketFactory: () => new SockJS(`${API_URL}/ws`),
@@ -53,7 +63,7 @@ export function useDashboardRealtime({
                     const event: HabitRealtimeEvent = JSON.parse(message.body);
                     if (isMountedRef.current) {
                         setLastEvent(event);
-                        onHabitEvent?.(event);
+                        onHabitEventRef.current?.(event);
                     }
                 });
             },
@@ -79,7 +89,7 @@ export function useDashboardRealtime({
             client.deactivate();
             clientRef.current = null;
         };
-    }, [userId, enabled, onHabitEvent]);
+    }, [userId, enabled]);
 
     return {
         status,
