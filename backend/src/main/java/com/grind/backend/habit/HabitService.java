@@ -8,6 +8,7 @@ import java.util.Objects;
 
 import com.grind.backend.user.UserModel;
 import com.grind.backend.user.UserRepository;
+import com.grind.backend.completedday.CompletedDayService;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,17 +24,20 @@ public class HabitService {
     private final HabitCompletionRepository habitCompletionRepository;
     private final UserRepository userRepository;
     private final RealtimeService realtimeService;
+    private final CompletedDayService completedDayService;
 
     public HabitService(
             HabitRepository habitRepository,
             HabitCompletionRepository habitCompletionRepository,
             UserRepository userRepository,
-            RealtimeService realtimeService
+            RealtimeService realtimeService,
+            CompletedDayService completedDayService
     ) {
         this.habitRepository = habitRepository;
         this.habitCompletionRepository = habitCompletionRepository;
         this.userRepository = userRepository;
         this.realtimeService = realtimeService;
+        this.completedDayService = completedDayService;
     }
 
 
@@ -76,6 +80,10 @@ public class HabitService {
 
         HabitModel savedHabit = habitRepository.save(habit);
 
+        LocalDate today = LocalDate.now();
+
+        completedDayService.syncCompletedDayForUser(user, today);
+
         HabitRealtimeEvent event = new HabitRealtimeEvent(
                 "HABIT_CREATED",
                 UserDto.fromModel(user),
@@ -112,6 +120,8 @@ public class HabitService {
 
         UserModel actor = habit.getUser();
 
+        completedDayService.syncCompletedDayForUser(actor, today);
+
         HabitRealtimeEvent event = new HabitRealtimeEvent(
                 "HABIT_COMPLETED",
                 UserDto.fromModel(actor),
@@ -137,6 +147,8 @@ public class HabitService {
         habitCompletionRepository.deleteByHabitAndCompletionDate(habit, today);
 
         UserModel actor = habit.getUser();
+
+        completedDayService.syncCompletedDayForUser(actor, today);
 
         HabitRealtimeEvent event = new HabitRealtimeEvent(
                 "HABIT_UNCOMPLETED",
@@ -198,6 +210,8 @@ public class HabitService {
 
         UserModel actor = updatedHabit.getUser();
 
+        completedDayService.syncCompletedDayForUser(actor, today);
+
         HabitRealtimeEvent event = new HabitRealtimeEvent(
                 "HABIT_UPDATED",
                 UserDto.fromModel(actor),
@@ -222,8 +236,12 @@ public class HabitService {
         Long deletedHabitId = habit.getId();
         String deletedHabitTitle = habit.getTitle();
 
+        LocalDate today = LocalDate.now();
+
         habitCompletionRepository.deleteByHabit(habit);
         habitRepository.delete(habit);
+
+        completedDayService.syncCompletedDayForUser(actor, today);
 
         HabitRealtimeEvent event = new HabitRealtimeEvent(
                 "HABIT_DELETED",

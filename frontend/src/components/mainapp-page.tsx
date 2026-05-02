@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { FriendshipDashboard } from "./friendship/FriendshipDashboard";
 import { useHabits, type DashboardResponse, type DashboardHabitResponse } from "../hooks/useHabits";
 import { useDashboardRealtime, type HabitRealtimeEvent } from "../hooks/useDashboardRealtime";
 import { useDebouncedCallback } from "../hooks/useDebounce";
@@ -90,29 +89,38 @@ function UserHabitCard({
     completedCount,
     totalCount,
     isOwn,
+    userId,
     onToggleHabit,
     togglingHabitId,
     optimisticHabitIds,
+    onUserClick,
 }: {
     username: string;
     habits: DashboardHabitResponse[];
     completedCount: number;
     totalCount: number;
     isOwn: boolean;
+    userId?: number;
     onToggleHabit?: (habitId: number, completedToday: boolean) => void;
     togglingHabitId?: number | null;
     optimisticHabitIds?: Set<number>;
+    onUserClick?: (userId: number) => void;
 }) {
     const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
 
     return (
         <div className="rounded-xl border border-border bg-card p-5 space-y-4">
             <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+                <button
+                    type="button"
+                    onClick={() => onUserClick?.(userId!)}
+                    disabled={isOwn || !userId}
+                    className={`flex items-center gap-3 ${!isOwn && userId ? "cursor-pointer hover:opacity-80" : ""}`}
+                >
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
                         {username.charAt(0).toUpperCase()}
                     </div>
-                    <div>
+                    <div className="text-left">
                         <h3 className="font-semibold text-foreground">
                             {isOwn ? "You" : username}
                         </h3>
@@ -120,7 +128,7 @@ function UserHabitCard({
                             {completedCount} / {totalCount} completed
                         </p>
                     </div>
-                </div>
+                </button>
                 <div className="text-right">
                     <span className="text-lg font-bold text-foreground">{Math.round(progress)}%</span>
                 </div>
@@ -245,7 +253,7 @@ export function MainAppPage() {
         }
 
         init();
-    }, [token, user?.id, navigate, loadDashboard]);
+    }, [token, user, navigate, loadDashboard]);
 
     async function handleToggleHabit(habitId: number, completedToday: boolean) {
         // Prevent duplicate toggles for the same habit
@@ -318,12 +326,6 @@ export function MainAppPage() {
         }
     }
 
-    function handleLogout() {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        navigate("/");
-    }
-
     if (isLoading) {
         return (
             <main className="min-h-screen flex items-center justify-center bg-background">
@@ -340,7 +342,7 @@ export function MainAppPage() {
     return (
         <main className="min-h-screen p-8 bg-background">
             <div className="mx-auto max-w-3xl space-y-6">
-                {/* Header with user info and logout */}
+                {/* Header with user info and connection status */}
                 <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">
@@ -352,19 +354,12 @@ export function MainAppPage() {
                                     {user?.username ?? "No user"}
                                 </h1>
                                 <p className="text-sm text-muted-foreground">
-                                    Welcome back
+                                    Dashboard
                                 </p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-4">
+                        <div>
                             <ConnectionStatus status={wsStatus} />
-                            <button
-                                type="button"
-                                onClick={handleLogout}
-                                className="rounded-lg border border-border bg-secondary px-4 py-2 text-sm font-medium text-secondary-foreground transition-colors hover:bg-secondary/80"
-                            >
-                                Logout
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -445,18 +440,17 @@ export function MainAppPage() {
                                 <UserHabitCard
                                     key={friend.user.id}
                                     username={friend.user.username}
+                                    userId={friend.user.id}
                                     habits={friend.habits}
                                     completedCount={friend.completedCount}
                                     totalCount={friend.totalCount}
                                     isOwn={false}
+                                    onUserClick={(userId) => navigate(`/profile/${userId}`)}
                                 />
                             ))}
                         </div>
                     </div>
                 )}
-
-                {/* Friendship Dashboard */}
-                <FriendshipDashboard />
             </div>
         </main>
     );
