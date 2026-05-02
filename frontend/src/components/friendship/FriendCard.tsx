@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { UserMinus, Loader2, Trash2 } from "lucide-react";
 import type { UserDto } from "../../types/friendship";
 
@@ -8,13 +9,28 @@ interface FriendCardProps {
 }
 
 export function FriendCard({ friend, onRemove }: FriendCardProps) {
+    const navigate = useNavigate();
     const [isConfirming, setIsConfirming] = useState(false);
     const [isRemoving, setIsRemoving] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const initial = friend.username.charAt(0).toUpperCase();
 
-    async function handleRemove() {
+    function handleOpenProfile() {
+        navigate(`/profile/${friend.id}`, {
+            state: { username: friend.username },
+        });
+    }
+
+    function handleKeyDown(e: React.KeyboardEvent) {
+        if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            handleOpenProfile();
+        }
+    }
+
+    async function handleRemove(e: React.MouseEvent) {
+        e.stopPropagation();
         if (!onRemove) return;
 
         setIsRemoving(true);
@@ -30,27 +46,40 @@ export function FriendCard({ friend, onRemove }: FriendCardProps) {
         }
     }
 
-    function handleCancelConfirm() {
+    function handleCancelConfirm(e: React.MouseEvent) {
+        e.stopPropagation();
         setIsConfirming(false);
         setError(null);
     }
 
+    function handleConfirmationClick(e: React.MouseEvent) {
+        e.stopPropagation();
+    }
+
     return (
-        <div className="rounded-xl border border-border bg-card transition-colors hover:bg-secondary/50">
+        <div
+            className="cursor-pointer rounded-xl border border-border bg-card transition-all hover:bg-secondary/50 hover:shadow-sm"
+            onClick={handleOpenProfile}
+            onKeyDown={handleKeyDown}
+            role="button"
+            tabIndex={0}
+        >
             <div className="flex items-center gap-4 p-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground transition-transform hover:scale-110">
                     {initial}
                 </div>
                 <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-foreground">@{friend.username}</p>
+                    <p className="truncate font-medium text-foreground hover:underline">
+                        @{friend.username}
+                    </p>
                 </div>
 
                 {onRemove && !isConfirming && (
                     <button
                         type="button"
-                        onClick={() => setIsConfirming(true)}
+                        onClick={handleRemove}
                         disabled={isRemoving}
-                        className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition-colors hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition-colors hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
                         aria-label={`Remove ${friend.username} from friends`}
                     >
                         <UserMinus className="h-4 w-4" />
@@ -60,7 +89,12 @@ export function FriendCard({ friend, onRemove }: FriendCardProps) {
 
             {/* Confirmation Panel */}
             {isConfirming && (
-                <div className="border-t border-border bg-secondary/30 px-4 py-3">
+                <div
+                    className="border-t border-border bg-secondary/30 px-4 py-3"
+                    onClick={handleConfirmationClick}
+                    onKeyDown={(e) => e.stopPropagation()}
+                    role="dialog"
+                >
                     <p className="mb-3 text-sm text-muted-foreground">
                         Remove <span className="font-medium text-foreground">@{friend.username}</span> from your friends?
                     </p>

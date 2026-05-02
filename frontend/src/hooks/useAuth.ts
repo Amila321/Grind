@@ -1,3 +1,5 @@
+import { useCallback, useMemo } from "react";
+
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
 
 export type UserDto = {
@@ -20,8 +22,21 @@ export type LoginRequest = {
     password: string;
 };
 
+async function handleResponse<T>(
+    response: Response,
+    fallbackMessage: string
+): Promise<T> {
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+
+        throw new Error(errorData?.message ?? fallbackMessage);
+    }
+
+    return response.json();
+}
+
 export function useAuth() {
-    async function register(data: RegisterRequest): Promise<UserDto> {
+    const register = useCallback(async (data: RegisterRequest): Promise<UserDto> => {
         const response = await fetch(`${API_URL}/api/users`, {
             method: "POST",
             headers: {
@@ -30,18 +45,10 @@ export function useAuth() {
             body: JSON.stringify(data),
         });
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => null);
+        return handleResponse<UserDto>(response, "Registration failed");
+    }, []);
 
-            throw new Error(
-                errorData?.message ?? "Registration failed"
-            );
-        }
-
-        return response.json();
-    }
-
-    async function login(data: LoginRequest): Promise<LoginResponse> {
+    const login = useCallback(async (data: LoginRequest): Promise<LoginResponse> => {
         const response = await fetch(`${API_URL}/api/auth/login`, {
             method: "POST",
             headers: {
@@ -50,24 +57,31 @@ export function useAuth() {
             body: JSON.stringify(data),
         });
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => null);
-
-            throw new Error(
-                errorData?.message ?? "Login failed"
-            );
-        }
-
-        const loginResponse: LoginResponse = await response.json();
+        const loginResponse = await handleResponse<LoginResponse>(
+            response,
+            "Login failed"
+        );
 
         localStorage.setItem("token", loginResponse.token);
         localStorage.setItem("user", JSON.stringify(loginResponse.user));
 
         return loginResponse;
-    }
+    }, []);
 
-    return {
-        register,
-        login,
-    };
+    const getUserById = useCallback(async (userId: number): Promise<UserDto> => {
+        const response = await fetch(`${API_URL}/api/users/${userId}`, {
+            method: "GET",
+        });
+
+        return handleResponse<UserDto>(response, "Failed to fetch user");
+    }, []);
+
+    return useMemo(
+        () => ({
+            register,
+            login,
+            getUserById,
+        }),
+        [register, login, getUserById]
+    );
 }
