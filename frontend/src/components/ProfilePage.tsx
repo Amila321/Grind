@@ -1,10 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { CalendarDays, ChevronLeft, ChevronRight, Loader2, Trophy } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
 import {
-    useCompletedDay,
-    type CompletedDaysResponse,
-} from "../hooks/useCompletedDay";
+    CalendarDays,
+    ChevronLeft,
+    ChevronRight,
+    Loader2,
+    Trophy,
+    ArrowLeft,
+    Flame,
+} from "lucide-react";
+import { useProfile, type ProfileResponse } from "../hooks/useProfile";
 
 type StoredUser = {
     id: number;
@@ -37,8 +42,6 @@ function buildCalendarDays(date: Date) {
 
     const daysInMonth = lastDayOfMonth.getDate();
 
-    // JS: Sunday = 0, Monday = 1.
-    // We want Monday-first calendar, so transform:
     const emptySlotsBeforeFirstDay = (firstDayOfMonth.getDay() + 6) % 7;
 
     const calendarDays: Array<{
@@ -65,13 +68,10 @@ function buildCalendarDays(date: Date) {
 
 export function ProfilePage() {
     const navigate = useNavigate();
-    const {
-        getCompletedDaysCountByUserId,
-        getCompletedDaysByUserId,
-    } = useCompletedDay();
+    const { userId: userIdParam } = useParams<{ userId?: string }>();
+    const { getProfileByUserId } = useProfile();
 
-    const [completedDaysCount, setCompletedDaysCount] = useState(0);
-    const [completedDays, setCompletedDays] = useState<CompletedDaysResponse[]>([]);
+    const [profile, setProfile] = useState<ProfileResponse | null>(null);
     const [visibleMonth, setVisibleMonth] = useState(() => new Date());
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -79,33 +79,55 @@ export function ProfilePage() {
     const token = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
 
-    const user: StoredUser | null = useMemo(() => {
+    const currentUser: StoredUser | null = useMemo(() => {
         return storedUser ? JSON.parse(storedUser) : null;
     }, [storedUser]);
 
+    // Determine target user ID
+    const targetUserId = useMemo(() => {
+        if (userIdParam) {
+            const parsed = Number(userIdParam);
+            return Number.isNaN(parsed) ? null : parsed;
+        }
+        return currentUser?.id ?? null;
+    }, [userIdParam, currentUser?.id]);
+
+    const isOwnProfile = useMemo(() => {
+        return targetUserId === currentUser?.id;
+    }, [targetUserId, currentUser?.id]);
+
+    const profileTitle = useMemo(() => {
+        if (isOwnProfile) return "My Profile";
+        return "User Profile";
+    }, [isOwnProfile]);
+
     const completedDaysSet = useMemo(() => {
-        return new Set(completedDays.map((completedDay) => completedDay.day));
-    }, [completedDays]);
+        if (!profile) return new Set<string>();
+        return new Set(profile.completedDays.map((day) => day.day));
+    }, [profile]);
 
     const calendarDays = useMemo(() => {
         return buildCalendarDays(visibleMonth);
     }, [visibleMonth]);
 
     const completedDaysInVisibleMonth = useMemo(() => {
+        if (!profile) return 0;
         const year = visibleMonth.getFullYear();
         const month = visibleMonth.getMonth();
 
-        return completedDays.filter((completedDay) => {
+        return profile.completedDays.filter((completedDay) => {
             const [completedYear, completedMonth] = completedDay.day
                 .split("-")
                 .map(Number);
 
             return completedYear === year && completedMonth === month + 1;
         }).length;
-    }, [completedDays, visibleMonth]);
+    }, [profile, visibleMonth]);
 
-    const loadProfileStats = useCallback(async () => {
-        if (!user) {
+    const loadProfile = useCallback(async () => {
+        if (!targetUserId) {
+            setError("Unable to determine target user");
+            setIsLoading(false);
             return;
         }
 
@@ -113,32 +135,25 @@ export function ProfilePage() {
         setError(null);
 
         try {
-            const [countResponse, completedDaysResponse] = await Promise.all([
-                getCompletedDaysCountByUserId(user.id),
-                getCompletedDaysByUserId(user.id),
-            ]);
-
-            setCompletedDaysCount(countResponse.count);
-            setCompletedDays(completedDaysResponse);
+            const profileData = await getProfileByUserId(targetUserId);
+            setProfile(profileData);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to load profile");
         } finally {
             setIsLoading(false);
         }
-    }, [
-        user,
-        getCompletedDaysCountByUserId,
-        getCompletedDaysByUserId,
-    ]);
+    }, [targetUserId, getProfileByUserId]);
 
     useEffect(() => {
-        if (!token || !user) {
+        if (!token || !currentUser) {
             navigate("/login");
             return;
         }
 
-        loadProfileStats();
-    }, [token, user, navigate, loadProfileStats]);
+        queueMicrotask(() => {
+            loadProfile();
+        });
+    }, [token, currentUser, navigate, loadProfile]);
 
     function goToPreviousMonth() {
         setVisibleMonth((current) => {
@@ -150,6 +165,14 @@ export function ProfilePage() {
         setVisibleMonth((current) => {
             return new Date(current.getFullYear(), current.getMonth() + 1, 1);
         });
+    }
+
+    function handleBackClick() {
+        if (isOwnProfile) {
+            navigate("/mainapp");
+        } else {
+            navigate(-1);
+        }
     }
 
     if (isLoading) {
@@ -165,37 +188,104 @@ export function ProfilePage() {
         );
     }
 
+    if (!profile) {
+        return (
+            <main className="min-h-screen bg-background p-8">
+                <div className="mx-auto max-w-4xl space-y-6">
+                    <button
+                        type="button"
+                        onClick={handleBackClick}
+                        className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                        <ArrowLeft className="h-4 w-4" />
+                        Back
+                    </button>
+                    <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                        {error || "Profile not found"}
+                    </div>
+                </div>
+            </main>
+        );
+    }
+
     return (
         <main className="min-h-screen bg-background p-8">
             <div className="mx-auto max-w-4xl space-y-6">
+                {!isOwnProfile && (
+                    <button
+                        type="button"
+                        onClick={handleBackClick}
+                        className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                        <ArrowLeft className="h-4 w-4" />
+                        Back
+                    </button>
+                )}
+
                 <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
                     <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
                         <div className="flex items-center gap-4">
                             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
-                                {user?.username.charAt(0).toUpperCase() ?? "?"}
+                                {profile.user.username.charAt(0).toUpperCase()}
                             </div>
 
                             <div>
-                                <p className="text-sm text-muted-foreground">My Profile</p>
+                                <p className="text-sm text-muted-foreground">{profileTitle}</p>
                                 <h1 className="text-2xl font-bold text-foreground">
-                                    {user?.username}
+                                    {profile.user.username}
                                 </h1>
                             </div>
                         </div>
 
-                        <div className="rounded-xl border border-border bg-background p-5">
-                            <div className="flex items-center gap-3">
-                                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-green-100 text-green-700">
-                                    <Trophy className="h-5 w-5" />
-                                </div>
+                        <div className="flex flex-col gap-3 sm:flex-row">
+                            <div className="rounded-xl border border-border bg-background p-5">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-green-100 text-green-700">
+                                        <Trophy className="h-5 w-5" />
+                                    </div>
 
-                                <div>
-                                    <p className="text-sm text-muted-foreground">
-                                        Total completed days
-                                    </p>
-                                    <p className="text-3xl font-bold text-foreground">
-                                        {completedDaysCount}
-                                    </p>
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">
+                                            Total completed days
+                                        </p>
+                                        <p className="text-3xl font-bold text-foreground">
+                                            {profile.completedDaysCount}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="rounded-xl border border-border bg-background p-5">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-orange-100 text-orange-700">
+                                        <Flame className="h-5 w-5" />
+                                    </div>
+
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">
+                                            Current streak
+                                        </p>
+                                        <p className="text-3xl font-bold text-foreground">
+                                            {profile.streak.currentStreak}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="rounded-xl border border-border bg-background p-5">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-purple-100 text-purple-700">
+                                        <Flame className="h-5 w-5" />
+                                    </div>
+
+                                    <div>
+                                        <p className="text-sm text-muted-foreground">
+                                            Best streak
+                                        </p>
+                                        <p className="text-3xl font-bold text-foreground">
+                                            {profile.streak.bestStreak}
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </div>

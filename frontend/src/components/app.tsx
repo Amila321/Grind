@@ -6,7 +6,6 @@ import { MainAppPage } from "./mainapp-page"
 import { HabitSetupPage } from "./habit-setup-page"
 import { FriendsPage } from "./FriendsPage"
 import { ProfilePage } from "./ProfilePage"
-import { FriendProfilePage } from "./FriendProfilePage"
 import { AppLayout } from "./AppLayout"
 
 export function App() {
@@ -55,7 +54,7 @@ export function App() {
                     path="/profile/:userId"
                     element={
                         <AppLayout>
-                            <FriendProfilePage />
+                            <ProfilePage />
                         </AppLayout>
                     }
                 />

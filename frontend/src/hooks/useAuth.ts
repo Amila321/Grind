@@ -68,20 +68,12 @@ export function useAuth() {
         return loginResponse;
     }, []);
 
-    const getUserById = useCallback(async (userId: number): Promise<UserDto> => {
-        const response = await fetch(`${API_URL}/api/users/${userId}`, {
-            method: "GET",
-        });
-
-        return handleResponse<UserDto>(response, "Failed to fetch user");
-    }, []);
 
     return useMemo(
         () => ({
             register,
             login,
-            getUserById,
         }),
-        [register, login, getUserById]
+        [register, login]
     );
 }

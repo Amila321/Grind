@@ -9,6 +9,7 @@ import com.grind.backend.habit.HabitCompletionRepository;
 import com.grind.backend.habit.HabitModel;
 import com.grind.backend.habit.HabitRepository;
 import com.grind.backend.user.UserModel;
+import com.grind.backend.streak.StreakService;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,15 +20,18 @@ public class CompletedDayService {
     private final CompletedDayRepository completedDayRepository;
     private final HabitRepository habitRepository;
     private final HabitCompletionRepository habitCompletionRepository;
+    private final StreakService streakService;
 
     public CompletedDayService(
             CompletedDayRepository completedDayRepository,
             HabitRepository habitRepository,
-            HabitCompletionRepository habitCompletionRepository
+            HabitCompletionRepository habitCompletionRepository,
+            StreakService streakService
     ) {
         this.completedDayRepository = completedDayRepository;
         this.habitRepository = habitRepository;
         this.habitCompletionRepository = habitCompletionRepository;
+        this.streakService = streakService;
     }
 
     @Transactional
@@ -36,6 +40,7 @@ public class CompletedDayService {
 
         if (habits.isEmpty()) {
             deleteCompletedDayIfExists(user, day);
+            streakService.syncBestStreak(user, day);
             return;
         }
 
@@ -55,6 +60,8 @@ public class CompletedDayService {
         } else {
             deleteCompletedDayIfExists(user, day);
         }
+
+        streakService.syncBestStreak(user, day);
     }
 
     @Transactional(readOnly = true)
