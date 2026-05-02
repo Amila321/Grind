@@ -11,6 +11,23 @@ type StoredUser = {
     username: string;
 };
 
+function getHabitEventLabel(type: HabitRealtimeEvent["type"]) {
+    switch (type) {
+        case "HABIT_CREATED":
+            return "created";
+        case "HABIT_UPDATED":
+            return "updated";
+        case "HABIT_DELETED":
+            return "deleted";
+        case "HABIT_COMPLETED":
+            return "completed";
+        case "HABIT_UNCOMPLETED":
+            return "uncompleted";
+        default:
+            return "changed";
+    }
+}
+
 function HabitItem({
     habit,
     isOwn,
@@ -364,7 +381,7 @@ export function MainAppPage() {
                     <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-blue-700 text-sm">
                         <span className="font-medium">{lastEvent.actor.username}</span>
                         {" "}
-                        {lastEvent.type === "HABIT_COMPLETED" ? "completed" : "uncompleted"}
+                        {getHabitEventLabel(lastEvent.type)}
                         {" "}
                         <span className="font-medium">{lastEvent.habitTitle}</span>
                     </div>
@@ -377,9 +394,9 @@ export function MainAppPage() {
                             <div className="h-12 w-12 rounded-full border-2 border-muted-foreground" />
                         </div>
                         <div className="space-y-2">
-                            <h2 className="text-lg font-semibold text-foreground">No Active Habits</h2>
+                            <h2 className="text-lg font-semibold text-foreground">No Habits Yet</h2>
                             <p className="text-muted-foreground">
-                                You haven&apos;t set up any habits yet. Create your habit list to start tracking!
+                                You haven&apos;t set up any habits yet. Add your first habits to start tracking!
                             </p>
                         </div>
                         <button

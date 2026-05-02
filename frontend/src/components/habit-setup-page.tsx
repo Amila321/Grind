@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useHabits, type HabitResponse } from "../hooks/useHabits";
-import { Loader2, Plus, Trash2, Send } from "lucide-react";
+import { Loader2, Plus, Trash2, Save, X, Pencil } from "lucide-react";
 
 type StoredUser = {
     id: number;
@@ -11,49 +11,53 @@ type StoredUser = {
 export function HabitSetupPage() {
     const navigate = useNavigate();
     const {
-        getOrCreateDraftList,
-        getDraftHabits,
-        addHabitToDraft,
-        deleteHabitFromDraft,
-        publishDraftList,
+        getHabits,
+        addHabit,
+        updateHabit,
+        deleteHabit,
     } = useHabits();
 
     const [habits, setHabits] = useState<HabitResponse[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isAdding, setIsAdding] = useState(false);
-    const [isPublishing, setIsPublishing] = useState(false);
     const [deletingId, setDeletingId] = useState<number | null>(null);
+    const [editingId, setEditingId] = useState<number | null>(null);
+    const [savingId, setSavingId] = useState<number | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
 
-    // Prevent concurrent operations
+    const [editTitle, setEditTitle] = useState("");
+    const [editDescription, setEditDescription] = useState("");
+
     const pendingDeletesRef = useRef<Set<number>>(new Set());
-    const isInitializedRef = useRef(false);
     const isFetchingRef = useRef(false);
 
     const token = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
-    const user: StoredUser | null = storedUser ? JSON.parse(storedUser) : null;
 
-    const loadDraftHabits = useCallback(async () => {
-        // Prevent concurrent fetches
+    const user: StoredUser | null = useMemo(() => {
+        return storedUser ? JSON.parse(storedUser) : null;
+    }, [storedUser]);
+
+    const loadHabits = useCallback(async () => {
         if (isFetchingRef.current) {
             return;
         }
-        
+
         isFetchingRef.current = true;
+
         try {
             setError(null);
-            const draftHabits = await getDraftHabits();
-            setHabits(draftHabits);
+            const data = await getHabits();
+            setHabits(data);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to load habits");
         } finally {
             isFetchingRef.current = false;
         }
-    }, [getDraftHabits]);
+    }, [getHabits]);
 
     useEffect(() => {
         if (!token || !user) {
@@ -61,70 +65,98 @@ export function HabitSetupPage() {
             return;
         }
 
-        // Prevent double initialization
-        if (isInitializedRef.current) {
-            return;
-        }
-        isInitializedRef.current = true;
-
-        async function initDraft() {
+        async function init() {
             setIsLoading(true);
-            try {
-                await getOrCreateDraftList();
-                await loadDraftHabits();
-            } catch (err) {
-                setError(err instanceof Error ? err.message : "Failed to initialize draft");
-            } finally {
-                setIsLoading(false);
-            }
+            await loadHabits();
+            setIsLoading(false);
         }
 
-        initDraft();
-    }, [token, user, navigate, getOrCreateDraftList, loadDraftHabits]);
+        init();
+    }, [token, user?.id, navigate, loadHabits]);
 
     async function handleAddHabit(e: React.FormEvent) {
         e.preventDefault();
-        if (!title.trim() || isAdding) return;
+
+        if (!title.trim() || isAdding) {
+            return;
+        }
 
         setIsAdding(true);
         setError(null);
 
         try {
-            const newHabit = await addHabitToDraft({
+            const newHabit = await addHabit({
                 title: title.trim(),
                 description: description.trim() || undefined,
             });
-            // Optimistically add to list
+
             setHabits((prev) => [...prev, newHabit]);
             setTitle("");
             setDescription("");
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to add habit");
-            // Reload to sync state on error
-            await loadDraftHabits();
+            await loadHabits();
         } finally {
             setIsAdding(false);
         }
     }
 
+    function startEditing(habit: HabitResponse) {
+        setEditingId(habit.id);
+        setEditTitle(habit.title);
+        setEditDescription(habit.description ?? "");
+        setError(null);
+    }
+
+    function cancelEditing() {
+        setEditingId(null);
+        setEditTitle("");
+        setEditDescription("");
+    }
+
+    async function handleUpdateHabit(habit: HabitResponse) {
+        if (!editTitle.trim() || savingId !== null) {
+            return;
+        }
+
+        setSavingId(habit.id);
+        setError(null);
+
+        try {
+            const updatedHabit = await updateHabit(habit.id, {
+                title: editTitle.trim(),
+                description: editDescription.trim() || null,
+                position: habit.position,
+            });
+
+            setHabits((prev) =>
+                prev.map((item) => item.id === habit.id ? updatedHabit : item)
+            );
+
+            cancelEditing();
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to update habit");
+            await loadHabits();
+        } finally {
+            setSavingId(null);
+        }
+    }
+
     async function handleDeleteHabit(habitId: number) {
-        // Prevent duplicate delete requests
         if (pendingDeletesRef.current.has(habitId)) {
             return;
         }
-        
+
         pendingDeletesRef.current.add(habitId);
         setDeletingId(habitId);
         setError(null);
 
-        // Optimistic update - remove immediately
         const previousHabits = habits;
-        setHabits((prev) => prev.filter((h) => h.id !== habitId));
+        setHabits((prev) => prev.filter((habit) => habit.id !== habitId));
 
         try {
-            await deleteHabitFromDraft(habitId);
+            await deleteHabit(habitId);
         } catch (err) {
-            // Revert optimistic update on error
             setHabits(previousHabits);
             setError(err instanceof Error ? err.message : "Failed to delete habit");
         } finally {
@@ -133,33 +165,12 @@ export function HabitSetupPage() {
         }
     }
 
-    async function handlePublish() {
-        if (habits.length === 0 || isPublishing) {
-            if (habits.length === 0) {
-                setError("Add at least one habit before publishing");
-            }
-            return;
-        }
-
-        setIsPublishing(true);
-        setError(null);
-
-        try {
-            await publishDraftList();
-            navigate("/mainapp");
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to publish habits");
-        } finally {
-            setIsPublishing(false);
-        }
-    }
-
     if (isLoading) {
         return (
             <main className="min-h-screen flex items-center justify-center bg-background">
                 <div className="flex items-center gap-2 text-muted-foreground">
                     <Loader2 className="h-5 w-5 animate-spin" />
-                    <span>Loading draft habits...</span>
+                    <span>Loading habits...</span>
                 </div>
             </main>
         );
@@ -168,24 +179,24 @@ export function HabitSetupPage() {
     return (
         <main className="min-h-screen p-8 bg-background">
             <div className="mx-auto max-w-2xl space-y-6">
-                {/* Header */}
                 <div className="text-center space-y-2">
-                    <h1 className="text-2xl font-bold text-foreground">Set Up Your Habits</h1>
+                    <h1 className="text-2xl font-bold text-foreground">
+                        Manage Your Habits
+                    </h1>
                     <p className="text-muted-foreground">
-                        Add habits you want to track daily. Once you&apos;re happy with your list, publish it to start tracking.
+                        Add, edit and delete your daily habits. Changes are visible on your dashboard immediately.
                     </p>
                 </div>
 
-                {/* Error Display */}
                 {error && (
                     <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700 text-sm">
                         {error}
                     </div>
                 )}
 
-                {/* Add Habit Form */}
                 <form onSubmit={handleAddHabit} className="rounded-xl border border-border bg-card p-6 space-y-4">
                     <h2 className="font-semibold text-foreground">Add New Habit</h2>
+
                     <div className="space-y-3">
                         <div>
                             <label htmlFor="title" className="block text-sm font-medium text-foreground mb-1">
@@ -201,21 +212,23 @@ export function HabitSetupPage() {
                                 disabled={isAdding}
                             />
                         </div>
+
                         <div>
                             <label htmlFor="description" className="block text-sm font-medium text-foreground mb-1">
-                                Description (optional)
+                                Description optional
                             </label>
                             <input
                                 id="description"
                                 type="text"
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
-                                placeholder="e.g., 30 minutes of cardio or strength training"
+                                placeholder="e.g., 30 minutes of cardio"
                                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                                 disabled={isAdding}
                             />
                         </div>
                     </div>
+
                     <button
                         type="submit"
                         disabled={isAdding || !title.trim()}
@@ -230,72 +243,114 @@ export function HabitSetupPage() {
                     </button>
                 </form>
 
-                {/* Current Draft Habits */}
                 <div className="rounded-xl border border-border bg-card p-6 space-y-4">
                     <div className="flex items-center justify-between">
                         <h2 className="font-semibold text-foreground">
-                            Draft Habits ({habits.length})
+                            Your Habits ({habits.length})
                         </h2>
                     </div>
 
                     {habits.length === 0 ? (
                         <p className="text-muted-foreground text-sm py-4 text-center">
-                            No habits added yet. Add your first habit above!
+                            No habits yet. Add your first habit above.
                         </p>
                     ) : (
                         <ul className="space-y-3">
-                            {habits.map((habit) => (
-                                <li
-                                    key={habit.id}
-                                    className={`flex items-start justify-between gap-4 rounded-lg border border-border bg-background p-4 transition-opacity ${
-                                        deletingId === habit.id ? "opacity-50" : ""
-                                    }`}
-                                >
-                                    <div className="space-y-1 min-w-0 flex-1">
-                                        <p className="font-medium text-foreground">{habit.title}</p>
-                                        {habit.description && (
-                                            <p className="text-sm text-muted-foreground truncate">
-                                                {habit.description}
-                                            </p>
-                                        )}
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleDeleteHabit(habit.id)}
-                                        disabled={deletingId === habit.id}
-                                        className="shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                                        aria-label={`Delete ${habit.title}`}
+                            {habits.map((habit) => {
+                                const isEditing = editingId === habit.id;
+
+                                return (
+                                    <li
+                                        key={habit.id}
+                                        className={`rounded-lg border border-border bg-background p-4 transition-opacity ${
+                                            deletingId === habit.id ? "opacity-50" : ""
+                                        }`}
                                     >
-                                        {deletingId === habit.id ? (
-                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                        {isEditing ? (
+                                            <div className="space-y-3">
+                                                <input
+                                                    value={editTitle}
+                                                    onChange={(e) => setEditTitle(e.target.value)}
+                                                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                                    placeholder="Habit title"
+                                                />
+
+                                                <input
+                                                    value={editDescription}
+                                                    onChange={(e) => setEditDescription(e.target.value)}
+                                                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                                    placeholder="Habit description"
+                                                />
+
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleUpdateHabit(habit)}
+                                                        disabled={savingId === habit.id || !editTitle.trim()}
+                                                        className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                                                    >
+                                                        {savingId === habit.id ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                        ) : (
+                                                            <Save className="h-4 w-4" />
+                                                        )}
+                                                        Save
+                                                    </button>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={cancelEditing}
+                                                        className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-secondary"
+                                                    >
+                                                        <X className="h-4 w-4" />
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            </div>
                                         ) : (
-                                            <Trash2 className="h-4 w-4" />
+                                            <div className="flex items-start justify-between gap-4">
+                                                <div className="space-y-1 min-w-0 flex-1">
+                                                    <p className="font-medium text-foreground">{habit.title}</p>
+                                                    {habit.description && (
+                                                        <p className="text-sm text-muted-foreground truncate">
+                                                            {habit.description}
+                                                        </p>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex gap-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => startEditing(habit)}
+                                                        className="shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                                                        aria-label={`Edit ${habit.title}`}
+                                                    >
+                                                        <Pencil className="h-4 w-4" />
+                                                    </button>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDeleteHabit(habit.id)}
+                                                        disabled={deletingId === habit.id}
+                                                        className="shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        aria-label={`Delete ${habit.title}`}
+                                                    >
+                                                        {deletingId === habit.id ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                        ) : (
+                                                            <Trash2 className="h-4 w-4" />
+                                                        )}
+                                                    </button>
+                                                </div>
+                                            </div>
                                         )}
-                                    </button>
-                                </li>
-                            ))}
+                                    </li>
+                                );
+                            })}
                         </ul>
                     )}
                 </div>
 
-                {/* Publish Button */}
-                <div className="flex justify-center">
-                    <button
-                        type="button"
-                        onClick={handlePublish}
-                        disabled={isPublishing || habits.length === 0}
-                        className="flex items-center gap-2 rounded-lg bg-green-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isPublishing ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                            <Send className="h-4 w-4" />
-                        )}
-                        Publish Habits
-                    </button>
-                </div>
-
-                {/* Back Link */}
                 <div className="text-center">
                     <button
                         type="button"

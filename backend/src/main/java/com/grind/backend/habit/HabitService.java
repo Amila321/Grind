@@ -19,60 +19,48 @@ import com.grind.backend.user.UserDto;
 @Service
 public class HabitService {
 
-    private final HabitListRepository habitListRepository;
     private final HabitRepository habitRepository;
     private final HabitCompletionRepository habitCompletionRepository;
     private final UserRepository userRepository;
     private final RealtimeService realtimeService;
 
     public HabitService(
-            HabitListRepository habitListRepository,
             HabitRepository habitRepository,
             HabitCompletionRepository habitCompletionRepository,
             UserRepository userRepository,
             RealtimeService realtimeService
     ) {
-        this.habitListRepository = habitListRepository;
         this.habitRepository = habitRepository;
         this.habitCompletionRepository = habitCompletionRepository;
         this.userRepository = userRepository;
         this.realtimeService = realtimeService;
     }
 
-    @Transactional
-    public HabitListModel getOrCreateDraftList(Long currentUserId) {
-        UserModel currentUser = getUserById(currentUserId);
-
-        return habitListRepository
-                .findByUserAndStatus(currentUser, HabitListStatus.DRAFT)
-                .orElseGet(() -> {
-                    HabitListModel draftList = HabitListModel.builder()
-                            .user(currentUser)
-                            .status(HabitListStatus.DRAFT)
-                            .build();
-
-                    return habitListRepository.save(draftList);
-                });
-    }
 
     @Transactional(readOnly = true)
-    public List<HabitModel> getDraftHabits(Long currentUserId) {
-        HabitListModel draftList = getDraftListForUser(currentUserId);
+    public List<HabitModel> getHabits(Long currentUserId) {
+        // Validate userId before querying
+        if (currentUserId == null || currentUserId <= 0) {
+            throw new IllegalArgumentException("Invalid user id: must be a positive number");
+        }
 
-        return habitRepository.findByHabitListOrderByPositionAsc(draftList);
+        UserModel user = getUserById(currentUserId);
+
+        // getUserById validates user exists and throws NoSuchElementException if not
+        return habitRepository.findByUserOrderByPositionAsc(user);
     }
 
     @Transactional
-    public HabitModel addHabitToDraft(
+    public HabitModel addHabit(
             Long currentUserId,
             String title,
             String description
     ) {
         validateTitle(title);
 
-        HabitListModel draftList = getOrCreateDraftList(currentUserId);
+        UserModel user = getUserById(currentUserId);
 
-        List<HabitModel> currentHabits = habitRepository.findByHabitListOrderByPositionAsc(draftList);
+        List<HabitModel> currentHabits = habitRepository.findByUserOrderByPositionAsc(user);
 
         int nextPosition = currentHabits.stream()
                 .map(HabitModel::getPosition)
@@ -80,52 +68,34 @@ public class HabitService {
                 .orElse(0) + 1;
 
         HabitModel habit = HabitModel.builder()
-                .habitList(draftList)
+                .user(user)
                 .title(title.trim())
                 .description(normalizeDescription(description))
                 .position(nextPosition)
                 .build();
 
-        return habitRepository.save(habit);
-    }
+        HabitModel savedHabit = habitRepository.save(habit);
 
-    @Transactional
-    public HabitListModel publishDraftList(Long currentUserId) {
-        HabitListModel draftList = getDraftListForUser(currentUserId);
-
-        List<HabitModel> draftHabits = habitRepository.findByHabitListOrderByPositionAsc(draftList);
-
-        if (draftHabits.isEmpty()) {
-            throw new IllegalStateException("Cannot publish empty habit list");
-        }
-
-        boolean activeListAlreadyExists = habitListRepository.existsByUserAndStatus(
-                draftList.getUser(),
-                HabitListStatus.ACTIVE
+        HabitRealtimeEvent event = new HabitRealtimeEvent(
+                "HABIT_CREATED",
+                UserDto.fromModel(user),
+                savedHabit.getId(),
+                savedHabit.getTitle(),
+                LocalDate.now(),
+                false
         );
 
-        if (activeListAlreadyExists) {
-            throw new IllegalStateException("Active habit list already exists");
-        }
+        realtimeService.publishHabitEventToUserAndFriends(user, event);
 
-        draftList.setStatus(HabitListStatus.ACTIVE);
-
-        return habitListRepository.save(draftList);
+        return savedHabit;
     }
 
-    @Transactional(readOnly = true)
-    public List<HabitModel> getMyActiveHabits(Long currentUserId) {
-        HabitListModel activeList = getActiveListForUser(currentUserId);
-
-        return habitRepository.findByHabitListOrderByPositionAsc(activeList);
-    }
 
     @Transactional
     public HabitCompletionModel completeHabitToday(Long currentUserId, Long habitId) {
         HabitModel habit = getHabitById(habitId);
 
         validateHabitBelongsToUser(habit, currentUserId);
-        validateHabitIsActive(habit);
 
         LocalDate today = LocalDate.now();
 
@@ -140,7 +110,7 @@ public class HabitService {
                     return habitCompletionRepository.save(newCompletion);
                 });
 
-        UserModel actor = habit.getHabitList().getUser();
+        UserModel actor = habit.getUser();
 
         HabitRealtimeEvent event = new HabitRealtimeEvent(
                 "HABIT_COMPLETED",
@@ -161,13 +131,12 @@ public class HabitService {
         HabitModel habit = getHabitById(habitId);
 
         validateHabitBelongsToUser(habit, currentUserId);
-        validateHabitIsActive(habit);
 
         LocalDate today = LocalDate.now();
 
         habitCompletionRepository.deleteByHabitAndCompletionDate(habit, today);
 
-        UserModel actor = habit.getHabitList().getUser();
+        UserModel actor = habit.getUser();
 
         HabitRealtimeEvent event = new HabitRealtimeEvent(
                 "HABIT_UNCOMPLETED",
@@ -182,19 +151,97 @@ public class HabitService {
     }
 
     @Transactional
-    public void deleteHabitFromDraft(Long currentUserId, Long habitId) {
+    public HabitModel editHabit(
+            Long currentUserId,
+            HabitResponse habitResponse
+    ) {
+        if (currentUserId == null || currentUserId <= 0) {
+            throw new IllegalArgumentException("Invalid user id: must be a positive number");
+        }
+
+        if (habitResponse == null) {
+            throw new IllegalArgumentException("Habit response cannot be null");
+        }
+
+        if (habitResponse.id() == null || habitResponse.id() <= 0) {
+            throw new IllegalArgumentException("Invalid habit id");
+        }
+
+        validateTitle(habitResponse.title());
+
+        if (habitResponse.position() != null && habitResponse.position() <= 0) {
+            throw new IllegalArgumentException("Position must be a positive number");
+        }
+
+        HabitModel habit = getHabitById(habitResponse.id());
+        validateHabitBelongsToUser(habit, currentUserId);
+
+        LocalDate today = LocalDate.now();
+
+        boolean wasCompletedToday = habitCompletionRepository.existsByHabitAndCompletionDate(
+                habit,
+                today
+        );
+
+        if (wasCompletedToday) {
+            habitCompletionRepository.deleteByHabitAndCompletionDate(habit, today);
+        }
+
+        habit.setTitle(habitResponse.title().trim());
+        habit.setDescription(normalizeDescription(habitResponse.description()));
+
+        if (habitResponse.position() != null) {
+            habit.setPosition(habitResponse.position());
+        }
+
+        HabitModel updatedHabit = habitRepository.save(habit);
+
+        UserModel actor = updatedHabit.getUser();
+
+        HabitRealtimeEvent event = new HabitRealtimeEvent(
+                "HABIT_UPDATED",
+                UserDto.fromModel(actor),
+                updatedHabit.getId(),
+                updatedHabit.getTitle(),
+                today,
+                false
+        );
+
+        realtimeService.publishHabitEventToUserAndFriends(actor, event);
+
+        return updatedHabit;
+    }
+
+    @Transactional
+    public void deleteHabit(Long currentUserId, Long habitId) {
         HabitModel habit = getHabitById(habitId);
 
         validateHabitBelongsToUser(habit, currentUserId);
 
-        if (habit.getHabitList().getStatus() != HabitListStatus.DRAFT) {
-            throw new IllegalStateException("Only draft habits can be deleted");
-        }
+        UserModel actor = habit.getUser();
+        Long deletedHabitId = habit.getId();
+        String deletedHabitTitle = habit.getTitle();
 
+        habitCompletionRepository.deleteByHabit(habit);
         habitRepository.delete(habit);
+
+        HabitRealtimeEvent event = new HabitRealtimeEvent(
+                "HABIT_DELETED",
+                UserDto.fromModel(actor),
+                deletedHabitId,
+                deletedHabitTitle,
+                LocalDate.now(),
+                false
+        );
+
+        realtimeService.publishHabitEventToUserAndFriends(actor, event);
     }
 
     private UserModel getUserById(Long userId) {
+        if (userId == null || userId <= 0) {
+            throw new IllegalArgumentException("Invalid user id");
+        }
+
         return userRepository.findById(userId)
                 .orElseThrow(() -> new NoSuchElementException(
                         "User with id " + userId + " not found"
@@ -208,37 +255,16 @@ public class HabitService {
                 ));
     }
 
-    private HabitListModel getDraftListForUser(Long currentUserId) {
-        UserModel currentUser = getUserById(currentUserId);
 
-        return habitListRepository.findByUserAndStatus(currentUser, HabitListStatus.DRAFT)
-                .orElseThrow(() -> new NoSuchElementException(
-                        "Draft habit list not found"
-                ));
-    }
-
-    private HabitListModel getActiveListForUser(Long currentUserId) {
-        UserModel currentUser = getUserById(currentUserId);
-
-        return habitListRepository.findByUserAndStatus(currentUser, HabitListStatus.ACTIVE)
-                .orElseThrow(() -> new NoSuchElementException(
-                        "Active habit list not found"
-                ));
-    }
 
     private void validateHabitBelongsToUser(HabitModel habit, Long currentUserId) {
-        Long ownerId = habit.getHabitList().getUser().getId();
+        Long ownerId = habit.getUser().getId();
 
         if (!Objects.equals(ownerId, currentUserId)) {
             throw new SecurityException("You can manage only your own habits");
         }
     }
 
-    private void validateHabitIsActive(HabitModel habit) {
-        if (habit.getHabitList().getStatus() != HabitListStatus.ACTIVE) {
-            throw new IllegalStateException("Only active habits can be completed");
-        }
-    }
 
     private void validateTitle(String title) {
         if (title == null || title.trim().isBlank()) {

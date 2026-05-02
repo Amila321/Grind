@@ -10,7 +10,12 @@ export type UserDto = {
 };
 
 export type HabitRealtimeEvent = {
-    type: "HABIT_COMPLETED" | "HABIT_UNCOMPLETED";
+    type:
+        | "HABIT_CREATED"
+        | "HABIT_UPDATED"
+        | "HABIT_DELETED"
+        | "HABIT_COMPLETED"
+        | "HABIT_UNCOMPLETED";
     actor: UserDto;
     habitId: number;
     habitTitle: string;

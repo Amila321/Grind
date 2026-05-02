@@ -27,4 +27,6 @@ public interface HabitCompletionRepository extends JpaRepository<HabitCompletion
             HabitModel habit,
             LocalDate completionDate
     );
+
+    void deleteByHabit(HabitModel habit);
 }
