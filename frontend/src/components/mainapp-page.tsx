@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { FriendshipDashboard } from "./friendship/FriendshipDashboard";
 import { useHabits, type DashboardResponse, type DashboardHabitResponse } from "../hooks/useHabits";
@@ -10,6 +10,23 @@ type StoredUser = {
     id: number;
     username: string;
 };
+
+function getHabitEventLabel(type: HabitRealtimeEvent["type"]) {
+    switch (type) {
+        case "HABIT_CREATED":
+            return "created";
+        case "HABIT_UPDATED":
+            return "updated";
+        case "HABIT_DELETED":
+            return "deleted";
+        case "HABIT_COMPLETED":
+            return "completed";
+        case "HABIT_UNCOMPLETED":
+            return "uncompleted";
+        default:
+            return "changed";
+    }
+}
 
 function HabitItem({
     habit,
@@ -139,7 +156,7 @@ function UserHabitCard({
 }
 
 function ConnectionStatus({ status }: { status: string }) {
-    const statusConfig = {
+    const statusConfig: Record<string, { icon: typeof Wifi; color: string; label: string; animate?: boolean }> = {
         CONNECTED: { icon: Wifi, color: "text-green-500", label: "Live" },
         CONNECTING: { icon: Loader2, color: "text-yellow-500", label: "Connecting", animate: true },
         DISCONNECTED: { icon: WifiOff, color: "text-muted-foreground", label: "Offline" },
@@ -175,7 +192,10 @@ export function MainAppPage() {
 
     const token = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
-    const user: StoredUser | null = storedUser ? JSON.parse(storedUser) : null;
+
+    const user: StoredUser | null = useMemo(() => {
+        return storedUser ? JSON.parse(storedUser) : null;
+    }, [storedUser]);
 
     const loadDashboard = useCallback(async () => {
         // Prevent concurrent fetches
@@ -225,7 +245,7 @@ export function MainAppPage() {
         }
 
         init();
-    }, [token, user, navigate, loadDashboard]);
+    }, [token, user?.id, navigate, loadDashboard]);
 
     async function handleToggleHabit(habitId: number, completedToday: boolean) {
         // Prevent duplicate toggles for the same habit
@@ -361,7 +381,7 @@ export function MainAppPage() {
                     <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-blue-700 text-sm">
                         <span className="font-medium">{lastEvent.actor.username}</span>
                         {" "}
-                        {lastEvent.type === "HABIT_COMPLETED" ? "completed" : "uncompleted"}
+                        {getHabitEventLabel(lastEvent.type)}
                         {" "}
                         <span className="font-medium">{lastEvent.habitTitle}</span>
                     </div>
@@ -374,9 +394,9 @@ export function MainAppPage() {
                             <div className="h-12 w-12 rounded-full border-2 border-muted-foreground" />
                         </div>
                         <div className="space-y-2">
-                            <h2 className="text-lg font-semibold text-foreground">No Active Habits</h2>
+                            <h2 className="text-lg font-semibold text-foreground">No Habits Yet</h2>
                             <p className="text-muted-foreground">
-                                You haven&apos;t set up any habits yet. Create your habit list to start tracking!
+                                You haven&apos;t set up any habits yet. Add your first habits to start tracking!
                             </p>
                         </div>
                         <button

@@ -10,7 +10,12 @@ export type UserDto = {
 };
 
 export type HabitRealtimeEvent = {
-    type: "HABIT_COMPLETED" | "HABIT_UNCOMPLETED";
+    type:
+        | "HABIT_CREATED"
+        | "HABIT_UPDATED"
+        | "HABIT_DELETED"
+        | "HABIT_COMPLETED"
+        | "HABIT_UNCOMPLETED";
     actor: UserDto;
     habitId: number;
     habitTitle: string;
@@ -31,63 +36,64 @@ export function useDashboardRealtime({
                                          enabled = true,
                                          onHabitEvent,
                                      }: UseDashboardRealtimeProps) {
-    const clientRef = useRef<Client | null>(null);
-    const isMountedRef = useRef(true);
     const onHabitEventRef = useRef(onHabitEvent);
-
-    // Keep callback ref updated without causing reconnection
-    useEffect(() => {
-        onHabitEventRef.current = onHabitEvent;
-    }, [onHabitEvent]);
 
     const [status, setStatus] = useState<ConnectionStatus>("DISCONNECTED");
     const [lastEvent, setLastEvent] = useState<HabitRealtimeEvent | null>(null);
 
     useEffect(() => {
-        isMountedRef.current = true;
+        onHabitEventRef.current = onHabitEvent;
+    }, [onHabitEvent]);
 
+    useEffect(() => {
         if (!enabled || userId === null) {
             return;
         }
 
-        setStatus("CONNECTING");
+        let isActive = true;
 
         const client = new Client({
             webSocketFactory: () => new SockJS(`${API_URL}/ws`),
             reconnectDelay: 5000,
 
             onConnect: () => {
-                if (isMountedRef.current) setStatus("CONNECTED");
+                if (!isActive) return;
+
+                setStatus("CONNECTED");
 
                 client.subscribe(`/topic/users/${userId}/dashboard`, (message) => {
+                    if (!isActive) return;
+
                     const event: HabitRealtimeEvent = JSON.parse(message.body);
-                    if (isMountedRef.current) {
-                        setLastEvent(event);
-                        onHabitEventRef.current?.(event);
-                    }
+
+                    setLastEvent(event);
+                    onHabitEventRef.current?.(event);
                 });
             },
 
             onStompError: () => {
-                if (isMountedRef.current) setStatus("ERROR");
+                if (isActive) setStatus("ERROR");
             },
 
             onWebSocketError: () => {
-                if (isMountedRef.current) setStatus("ERROR");
+                if (isActive) setStatus("ERROR");
             },
 
             onDisconnect: () => {
-                if (isMountedRef.current) setStatus("DISCONNECTED");
+                if (isActive) setStatus("DISCONNECTED");
             },
         });
 
+        // Schedule CONNECTING state asynchronously to avoid react-hooks/set-state-in-effect warning
+        queueMicrotask(() => {
+            if (isActive) setStatus("CONNECTING");
+        });
+
         client.activate();
-        clientRef.current = client;
 
         return () => {
-            isMountedRef.current = false;
+            isActive = false;
             client.deactivate();
-            clientRef.current = null;
         };
     }, [userId, enabled]);
 

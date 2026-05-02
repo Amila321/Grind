@@ -1,11 +1,6 @@
+import { useCallback, useMemo } from "react";
+
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080";
-
-export type HabitListStatus = "DRAFT" | "ACTIVE";
-
-export type HabitListResponse = {
-    id: number;
-    status: HabitListStatus;
-};
 
 export type HabitResponse = {
     id: number;
@@ -48,6 +43,12 @@ export type AddHabitRequest = {
     description?: string;
 };
 
+export type UpdateHabitRequest = {
+    title: string;
+    description?: string | null;
+    position?: number;
+};
+
 function getAuthHeaders() {
     const token = localStorage.getItem("token");
 
@@ -83,79 +84,8 @@ async function handleEmptyResponse(response: Response): Promise<void> {
 }
 
 export function useHabits() {
-    async function getOrCreateDraftList(): Promise<HabitListResponse> {
-        const response = await fetch(`${API_URL}/api/habit/habit-lists/draft`, {
-            method: "POST",
-            headers: {
-                ...getAuthHeaders(),
-            },
-        });
-
-        return handleResponse<HabitListResponse>(response);
-    }
-
-    async function getDraftHabits(): Promise<HabitResponse[]> {
-        const response = await fetch(
-            `${API_URL}/api/habit/habit-lists/draft/habits`,
-            {
-                method: "GET",
-                headers: {
-                    ...getAuthHeaders(),
-                },
-            }
-        );
-
-        return handleResponse<HabitResponse[]>(response);
-    }
-
-    async function addHabitToDraft(
-        data: AddHabitRequest
-    ): Promise<HabitResponse> {
-        const response = await fetch(
-            `${API_URL}/api/habit/habit-lists/draft/habits`,
-            {
-                method: "POST",
-                headers: {
-                    ...getAuthHeaders(),
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(data),
-            }
-        );
-
-        return handleResponse<HabitResponse>(response);
-    }
-
-    async function deleteHabitFromDraft(habitId: number): Promise<void> {
-        const response = await fetch(
-            `${API_URL}/api/habit/habit-lists/draft/habits/${habitId}`,
-            {
-                method: "DELETE",
-                headers: {
-                    ...getAuthHeaders(),
-                },
-            }
-        );
-
-        return handleEmptyResponse(response);
-    }
-
-    async function publishDraftList(): Promise<HabitListResponse> {
-        const response = await fetch(
-            `${API_URL}/api/habit/habit-lists/draft/publish`,
-            {
-                method: "POST",
-                headers: {
-                    ...getAuthHeaders(),
-                },
-            }
-        );
-
-        return handleResponse<HabitListResponse>(response);
-    }
-
-    async function getActiveHabits(): Promise<HabitResponse[]> {
-        const response = await fetch(`${API_URL}/api/habit/habits/active`, {
+    const getHabits = useCallback(async (): Promise<HabitResponse[]> => {
+        const response = await fetch(`${API_URL}/api/habit/habits`, {
             method: "GET",
             headers: {
                 ...getAuthHeaders(),
@@ -163,25 +93,72 @@ export function useHabits() {
         });
 
         return handleResponse<HabitResponse[]>(response);
-    }
+    }, []);
 
-    async function completeHabitToday(
-        habitId: number
-    ): Promise<HabitCompletionResponse> {
-        const response = await fetch(
-            `${API_URL}/api/habit/habits/${habitId}/completions/today`,
-            {
+    const addHabit = useCallback(
+        async (data: AddHabitRequest): Promise<HabitResponse> => {
+            const response = await fetch(`${API_URL}/api/habit/habits`, {
                 method: "POST",
                 headers: {
                     ...getAuthHeaders(),
+                    "Content-Type": "application/json",
                 },
-            }
-        );
+                body: JSON.stringify(data),
+            });
 
-        return handleResponse<HabitCompletionResponse>(response);
-    }
+            return handleResponse<HabitResponse>(response);
+        },
+        []
+    );
 
-    async function uncompleteHabitToday(habitId: number): Promise<void> {
+    const updateHabit = useCallback(
+        async (
+            habitId: number,
+            data: UpdateHabitRequest
+        ): Promise<HabitResponse> => {
+            const response = await fetch(`${API_URL}/api/habit/habits/${habitId}`, {
+                method: "PUT",
+                headers: {
+                    ...getAuthHeaders(),
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(data),
+            });
+
+            return handleResponse<HabitResponse>(response);
+        },
+        []
+    );
+
+    const deleteHabit = useCallback(async (habitId: number): Promise<void> => {
+        const response = await fetch(`${API_URL}/api/habit/habits/${habitId}`, {
+            method: "DELETE",
+            headers: {
+                ...getAuthHeaders(),
+            },
+        });
+
+        return handleEmptyResponse(response);
+    }, []);
+
+    const completeHabitToday = useCallback(
+        async (habitId: number): Promise<HabitCompletionResponse> => {
+            const response = await fetch(
+                `${API_URL}/api/habit/habits/${habitId}/completions/today`,
+                {
+                    method: "POST",
+                    headers: {
+                        ...getAuthHeaders(),
+                    },
+                }
+            );
+
+            return handleResponse<HabitCompletionResponse>(response);
+        },
+        []
+    );
+
+    const uncompleteHabitToday = useCallback(async (habitId: number): Promise<void> => {
         const response = await fetch(
             `${API_URL}/api/habit/habits/${habitId}/completions/today`,
             {
@@ -193,9 +170,9 @@ export function useHabits() {
         );
 
         return handleEmptyResponse(response);
-    }
+    }, []);
 
-    async function getDashboard(): Promise<DashboardResponse> {
+    const getDashboard = useCallback(async (): Promise<DashboardResponse> => {
         const response = await fetch(`${API_URL}/api/dashboard`, {
             method: "GET",
             headers: {
@@ -204,17 +181,26 @@ export function useHabits() {
         });
 
         return handleResponse<DashboardResponse>(response);
-    }
+    }, []);
 
-    return {
-        getOrCreateDraftList,
-        getDraftHabits,
-        addHabitToDraft,
-        deleteHabitFromDraft,
-        publishDraftList,
-        getActiveHabits,
-        completeHabitToday,
-        uncompleteHabitToday,
-        getDashboard,
-    };
+    return useMemo(
+        () => ({
+            getHabits,
+            addHabit,
+            updateHabit,
+            deleteHabit,
+            completeHabitToday,
+            uncompleteHabitToday,
+            getDashboard,
+        }),
+        [
+            getHabits,
+            addHabit,
+            updateHabit,
+            deleteHabit,
+            completeHabitToday,
+            uncompleteHabitToday,
+            getDashboard,
+        ]
+    );
 }

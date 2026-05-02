@@ -1,6 +1,5 @@
 package com.grind.backend.habit;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -8,8 +7,6 @@ import java.util.NoSuchElementException;
 import com.grind.backend.auth.TokenService;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +14,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -37,33 +35,14 @@ public class HabitController {
         this.tokenService = tokenService;
     }
 
-    @PostMapping("/habit-lists/draft")
-    public ResponseEntity<?> getOrCreateDraftList(
+    @GetMapping("/habits")
+    public ResponseEntity<?> getHabits(
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader
     ) {
         try {
             Long currentUserId = extractCurrentUserId(authorizationHeader);
 
-            HabitListModel draftList = habitService.getOrCreateDraftList(currentUserId);
-
-            return ResponseEntity.ok(HabitListResponse.fromModel(draftList));
-
-        } catch (IllegalArgumentException exception) {
-            return unauthorized(exception.getMessage());
-
-        } catch (NoSuchElementException exception) {
-            return notFound(exception.getMessage());
-        }
-    }
-
-    @GetMapping("/habit-lists/draft/habits")
-    public ResponseEntity<?> getDraftHabits(
-            @RequestHeader(value = "Authorization", required = false) String authorizationHeader
-    ) {
-        try {
-            Long currentUserId = extractCurrentUserId(authorizationHeader);
-
-            List<HabitResponse> habits = habitService.getDraftHabits(currentUserId)
+            List<HabitResponse> habits = habitService.getHabits(currentUserId)
                     .stream()
                     .map(HabitResponse::fromModel)
                     .toList();
@@ -78,22 +57,23 @@ public class HabitController {
         }
     }
 
-    @PostMapping("/habit-lists/draft/habits")
-    public ResponseEntity<?> addHabitToDraft(
+    @PostMapping("/habits")
+    public ResponseEntity<?> addHabit(
             @Valid @RequestBody AddHabitRequest request,
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader
     ) {
         try {
             Long currentUserId = extractCurrentUserId(authorizationHeader);
 
-            HabitModel habit = habitService.addHabitToDraft(
+            HabitModel createdHabit = habitService.addHabit(
                     currentUserId,
                     request.title(),
                     request.description()
             );
 
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(HabitResponse.fromModel(habit));
+            return ResponseEntity
+                    .status(HttpStatus.CREATED)
+                    .body(HabitResponse.fromModel(createdHabit));
 
         } catch (IllegalArgumentException exception) {
             return badRequest(exception.getMessage());
@@ -103,15 +83,49 @@ public class HabitController {
         }
     }
 
-    @DeleteMapping("/habit-lists/draft/habits/{habitId}")
-    public ResponseEntity<?> deleteHabitFromDraft(
+    @PutMapping("/habits/{habitId}")
+    public ResponseEntity<?> editHabit(
+            @PathVariable Long habitId,
+            @Valid @RequestBody UpdateHabitRequest request,
+            @RequestHeader(value = "Authorization", required = false) String authorizationHeader
+    ) {
+        try {
+            Long currentUserId = extractCurrentUserId(authorizationHeader);
+
+            HabitResponse habitToUpdate = new HabitResponse(
+                    habitId,
+                    request.title(),
+                    request.description(),
+                    request.position()
+            );
+
+            HabitModel updatedHabit = habitService.editHabit(
+                    currentUserId,
+                    habitToUpdate
+            );
+
+            return ResponseEntity.ok(HabitResponse.fromModel(updatedHabit));
+
+        } catch (IllegalArgumentException exception) {
+            return badRequest(exception.getMessage());
+
+        } catch (SecurityException exception) {
+            return forbidden(exception.getMessage());
+
+        } catch (NoSuchElementException exception) {
+            return notFound(exception.getMessage());
+        }
+    }
+
+    @DeleteMapping("/habits/{habitId}")
+    public ResponseEntity<?> deleteHabit(
             @PathVariable Long habitId,
             @RequestHeader(value = "Authorization", required = false) String authorizationHeader
     ) {
         try {
             Long currentUserId = extractCurrentUserId(authorizationHeader);
 
-            habitService.deleteHabitFromDraft(currentUserId, habitId);
+            habitService.deleteHabit(currentUserId, habitId);
 
             return ResponseEntity.noContent().build();
 
@@ -120,53 +134,6 @@ public class HabitController {
 
         } catch (SecurityException exception) {
             return forbidden(exception.getMessage());
-
-        } catch (NoSuchElementException exception) {
-            return notFound(exception.getMessage());
-
-        } catch (IllegalStateException exception) {
-            return badRequest(exception.getMessage());
-        }
-    }
-
-    @PostMapping("/habit-lists/draft/publish")
-    public ResponseEntity<?> publishDraftList(
-            @RequestHeader(value = "Authorization", required = false) String authorizationHeader
-    ) {
-        try {
-            Long currentUserId = extractCurrentUserId(authorizationHeader);
-
-            HabitListModel publishedList = habitService.publishDraftList(currentUserId);
-
-            return ResponseEntity.ok(HabitListResponse.fromModel(publishedList));
-
-        } catch (IllegalArgumentException exception) {
-            return unauthorized(exception.getMessage());
-
-        } catch (NoSuchElementException exception) {
-            return notFound(exception.getMessage());
-
-        } catch (IllegalStateException exception) {
-            return badRequest(exception.getMessage());
-        }
-    }
-
-    @GetMapping("/habits/active")
-    public ResponseEntity<?> getMyActiveHabits(
-            @RequestHeader(value = "Authorization", required = false) String authorizationHeader
-    ) {
-        try {
-            Long currentUserId = extractCurrentUserId(authorizationHeader);
-
-            List<HabitResponse> habits = habitService.getMyActiveHabits(currentUserId)
-                    .stream()
-                    .map(HabitResponse::fromModel)
-                    .toList();
-
-            return ResponseEntity.ok(habits);
-
-        } catch (IllegalArgumentException exception) {
-            return unauthorized(exception.getMessage());
 
         } catch (NoSuchElementException exception) {
             return notFound(exception.getMessage());
@@ -196,9 +163,6 @@ public class HabitController {
 
         } catch (NoSuchElementException exception) {
             return notFound(exception.getMessage());
-
-        } catch (IllegalStateException exception) {
-            return badRequest(exception.getMessage());
         }
     }
 
@@ -222,9 +186,6 @@ public class HabitController {
 
         } catch (NoSuchElementException exception) {
             return notFound(exception.getMessage());
-
-        } catch (IllegalStateException exception) {
-            return badRequest(exception.getMessage());
         }
     }
 

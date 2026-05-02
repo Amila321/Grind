@@ -1,5 +1,6 @@
 package com.grind.backend.habit;
 
+import com.grind.backend.user.UserModel;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -30,8 +31,8 @@ public class HabitModel {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "habit_list_id", nullable = false)
-    private HabitListModel habitList;
+    @JoinColumn(name = "user_id", nullable = false)
+    private UserModel user;
 
     @Column(nullable = false, length = 100)
     private String title;

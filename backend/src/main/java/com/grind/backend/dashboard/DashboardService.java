@@ -10,7 +10,9 @@ import java.util.stream.Collectors;
 import com.grind.backend.friendship.FriendshipModel;
 import com.grind.backend.friendship.FriendshipRepository;
 import com.grind.backend.friendship.FriendshipStatus;
-import com.grind.backend.habit.*;
+import com.grind.backend.habit.HabitCompletionRepository;
+import com.grind.backend.habit.HabitModel;
+import com.grind.backend.habit.HabitRepository;
 import com.grind.backend.user.UserDto;
 import com.grind.backend.user.UserModel;
 import com.grind.backend.user.UserRepository;
@@ -23,20 +25,17 @@ public class DashboardService {
 
     private final UserRepository userRepository;
     private final FriendshipRepository friendshipRepository;
-    private final HabitListRepository habitListRepository;
     private final HabitRepository habitRepository;
     private final HabitCompletionRepository habitCompletionRepository;
 
     public DashboardService(
             UserRepository userRepository,
             FriendshipRepository friendshipRepository,
-            HabitListRepository habitListRepository,
             HabitRepository habitRepository,
             HabitCompletionRepository habitCompletionRepository
     ) {
         this.userRepository = userRepository;
         this.friendshipRepository = friendshipRepository;
-        this.habitListRepository = habitListRepository;
         this.habitRepository = habitRepository;
         this.habitCompletionRepository = habitCompletionRepository;
     }
@@ -61,21 +60,7 @@ public class DashboardService {
     }
 
     private DashboardUserResponse buildUserDashboard(UserModel user) {
-        return habitListRepository.findByUserAndStatus(user, HabitListStatus.ACTIVE)
-                .map(activeList -> buildUserDashboardFromActiveList(user, activeList))
-                .orElseGet(() -> new DashboardUserResponse(
-                        UserDto.fromModel(user),
-                        List.of(),
-                        0,
-                        0
-                ));
-    }
-
-    private DashboardUserResponse buildUserDashboardFromActiveList(
-            UserModel user,
-            HabitListModel activeList
-    ) {
-        List<HabitModel> habits = habitRepository.findByHabitListOrderByPositionAsc(activeList);
+        List<HabitModel> habits = habitRepository.findByUserOrderByPositionAsc(user);
 
         if (habits.isEmpty()) {
             return new DashboardUserResponse(
