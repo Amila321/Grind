@@ -241,7 +241,7 @@ cd Grind
 
 ## 2. Start MySQL with Docker
 
-If the project contains a Docker Compose file, start the database with:
+start the database with:
 
 ```bash
 docker compose up -d
@@ -361,16 +361,12 @@ Exact values may depend on your local setup.
 
 ## AI Usage
 
-AI tools were used as support during development. They helped with:
+AI tools were used as support during development to speed up the process and improve code quality:
 
-- planning backend architecture,
-- generating initial boilerplate for services, controllers, and DTOs,
-- improving frontend UI prompts,
-- refactoring React components,
-- debugging dependency loops in React hooks,
-- preparing README structure and demo presentation.
+- **GitHub Copilot:** used for planning the backend architecture, generating initial boilerplate for backend.
+- **v0:** used for frontend tasks, including generating and improving UI components, refactoring React code.
 
-All generated code was reviewed, adjusted, and integrated manually.
+All generated code was thoroughly reviewed, adjusted, and integrated manually to ensure it meets the project requirements.
 
 ---
 
