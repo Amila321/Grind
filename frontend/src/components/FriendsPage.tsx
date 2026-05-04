@@ -14,7 +14,7 @@ export function FriendsPage() {
     }, [token, storedUser, navigate]);
 
     return (
-        <div className="min-h-screen p-8 bg-background">
+        <div className="min-h-screen px-4 py-6 sm:px-6 sm:py-8 bg-background">
             <div className="mx-auto max-w-3xl">
                 <FriendshipDashboard />
             </div>

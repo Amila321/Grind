@@ -177,7 +177,7 @@ export function ProfilePage() {
 
     if (isLoading) {
         return (
-            <main className="min-h-screen bg-background p-8">
+            <main className="min-h-screen bg-background px-4 py-6 sm:px-6 sm:py-8">
                 <div className="flex min-h-[60vh] items-center justify-center">
                     <div className="flex items-center gap-2 text-muted-foreground">
                         <Loader2 className="h-5 w-5 animate-spin" />
@@ -190,7 +190,7 @@ export function ProfilePage() {
 
     if (!profile) {
         return (
-            <main className="min-h-screen bg-background p-8">
+            <main className="min-h-screen bg-background px-4 py-6 sm:px-6 sm:py-8">
                 <div className="mx-auto max-w-4xl space-y-6">
                     <button
                         type="button"
@@ -209,7 +209,7 @@ export function ProfilePage() {
     }
 
     return (
-        <main className="min-h-screen bg-background p-8">
+        <main className="min-h-screen bg-background px-4 py-6 sm:px-6 sm:py-8">
             <div className="mx-auto max-w-4xl space-y-6">
                 {!isOwnProfile && (
                     <button
@@ -222,67 +222,67 @@ export function ProfilePage() {
                     </button>
                 )}
 
-                <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-                    <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
+                <section className="rounded-2xl border border-border bg-card p-4 sm:p-6 shadow-sm">
+                    <div className="flex flex-col gap-6">
                         <div className="flex items-center gap-4">
-                            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
+                            <div className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-full bg-primary text-xl sm:text-2xl font-bold text-primary-foreground shrink-0">
                                 {profile.user.username.charAt(0).toUpperCase()}
                             </div>
 
-                            <div>
+                            <div className="min-w-0">
                                 <p className="text-sm text-muted-foreground">{profileTitle}</p>
-                                <h1 className="text-2xl font-bold text-foreground">
+                                <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">
                                     {profile.user.username}
                                 </h1>
                             </div>
                         </div>
 
-                        <div className="flex flex-col gap-3 sm:flex-row">
-                            <div className="rounded-xl border border-border bg-background p-5">
-                                <div className="flex items-center gap-3">
-                                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-green-100 text-green-700">
-                                        <Trophy className="h-5 w-5" />
+                        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                            <div className="rounded-xl border border-border bg-background p-3 sm:p-5">
+                                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 text-center sm:text-left">
+                                    <div className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-green-100 text-green-700 shrink-0">
+                                        <Trophy className="h-4 w-4 sm:h-5 sm:w-5" />
                                     </div>
 
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">
-                                            Total completed days
+                                    <div className="min-w-0">
+                                        <p className="text-xs sm:text-sm text-muted-foreground">
+                                            Completed
                                         </p>
-                                        <p className="text-3xl font-bold text-foreground">
+                                        <p className="text-xl sm:text-3xl font-bold text-foreground">
                                             {profile.completedDaysCount}
                                         </p>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="rounded-xl border border-border bg-background p-5">
-                                <div className="flex items-center gap-3">
-                                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-orange-100 text-orange-700">
-                                        <Flame className="h-5 w-5" />
+                            <div className="rounded-xl border border-border bg-background p-3 sm:p-5">
+                                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 text-center sm:text-left">
+                                    <div className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-orange-100 text-orange-700 shrink-0">
+                                        <Flame className="h-4 w-4 sm:h-5 sm:w-5" />
                                     </div>
 
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">
-                                            Current streak
+                                    <div className="min-w-0">
+                                        <p className="text-xs sm:text-sm text-muted-foreground">
+                                            Streak
                                         </p>
-                                        <p className="text-3xl font-bold text-foreground">
+                                        <p className="text-xl sm:text-3xl font-bold text-foreground">
                                             {profile.streak.currentStreak}
                                         </p>
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="rounded-xl border border-border bg-background p-5">
-                                <div className="flex items-center gap-3">
-                                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-purple-100 text-purple-700">
-                                        <Flame className="h-5 w-5" />
+                            <div className="rounded-xl border border-border bg-background p-3 sm:p-5">
+                                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-3 text-center sm:text-left">
+                                    <div className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-full bg-amber-100 text-amber-700 shrink-0">
+                                        <Flame className="h-4 w-4 sm:h-5 sm:w-5" />
                                     </div>
 
-                                    <div>
-                                        <p className="text-sm text-muted-foreground">
-                                            Best streak
+                                    <div className="min-w-0">
+                                        <p className="text-xs sm:text-sm text-muted-foreground">
+                                            Best
                                         </p>
-                                        <p className="text-3xl font-bold text-foreground">
+                                        <p className="text-xl sm:text-3xl font-bold text-foreground">
                                             {profile.streak.bestStreak}
                                         </p>
                                     </div>
@@ -298,22 +298,22 @@ export function ProfilePage() {
                     </div>
                 )}
 
-                <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-                    <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <section className="rounded-2xl border border-border bg-card p-4 sm:p-6 shadow-sm">
+                    <div className="mb-4 sm:mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <div className="flex items-center gap-2">
                                 <CalendarDays className="h-5 w-5 text-muted-foreground" />
-                                <h2 className="text-lg font-semibold text-foreground">
-                                    Completed Days Calendar
+                                <h2 className="text-base sm:text-lg font-semibold text-foreground">
+                                    Activity Calendar
                                 </h2>
                             </div>
 
-                            <p className="mt-1 text-sm text-muted-foreground">
-                                {completedDaysInVisibleMonth} completed days in this month
+                            <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
+                                {completedDaysInVisibleMonth} completed days this month
                             </p>
                         </div>
 
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 sm:gap-3">
                             <button
                                 type="button"
                                 onClick={goToPreviousMonth}
@@ -323,7 +323,7 @@ export function ProfilePage() {
                                 <ChevronLeft className="h-4 w-4" />
                             </button>
 
-                            <p className="min-w-36 text-center text-sm font-medium text-foreground">
+                            <p className="min-w-28 sm:min-w-36 text-center text-xs sm:text-sm font-medium text-foreground">
                                 {getMonthName(visibleMonth)}
                             </p>
 
@@ -338,13 +338,14 @@ export function ProfilePage() {
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-7 gap-2">
+                    <div className="grid grid-cols-7 gap-1 sm:gap-2">
                         {WEEK_DAYS.map((weekDay) => (
                             <div
                                 key={weekDay}
-                                className="pb-2 text-center text-xs font-medium text-muted-foreground"
+                                className="pb-1 sm:pb-2 text-center text-[10px] sm:text-xs font-medium text-muted-foreground"
                             >
-                                {weekDay}
+                                {weekDay.charAt(0)}
+                                <span className="hidden sm:inline">{weekDay.slice(1)}</span>
                             </div>
                         ))}
 
@@ -353,7 +354,7 @@ export function ProfilePage() {
                                 return (
                                     <div
                                         key={`empty-${index}`}
-                                        className="aspect-square rounded-xl"
+                                        className="aspect-square rounded-lg sm:rounded-xl"
                                     />
                                 );
                             }
@@ -370,19 +371,19 @@ export function ProfilePage() {
                             return (
                                 <div
                                     key={calendarDay.dateKey}
-                                    className={`aspect-square rounded-xl border p-2 transition-colors ${
+                                    className={`aspect-square rounded-lg sm:rounded-xl border p-1 sm:p-2 transition-colors ${
                                         isCompleted
                                             ? "border-green-500 bg-green-500 text-white shadow-sm"
                                             : "border-border bg-background text-muted-foreground"
                                     } ${isToday && !isCompleted ? "ring-2 ring-primary/40" : ""}`}
                                 >
-                                    <div className="flex h-full flex-col items-center justify-center gap-1">
-                                        <span className="text-sm font-semibold">
+                                    <div className="flex h-full flex-col items-center justify-center gap-0.5 sm:gap-1">
+                                        <span className="text-xs sm:text-sm font-semibold">
                                             {calendarDay.day}
                                         </span>
 
                                         {isCompleted && (
-                                            <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                                            <span className="h-1 w-1 sm:h-1.5 sm:w-1.5 rounded-full bg-white" />
                                         )}
                                     </div>
                                 </div>
@@ -390,14 +391,14 @@ export function ProfilePage() {
                         })}
                     </div>
 
-                    <div className="mt-6 flex flex-wrap gap-4 text-xs text-muted-foreground">
-                        <div className="flex items-center gap-2">
-                            <span className="h-3 w-3 rounded-full bg-green-500" />
-                            <span>Fully completed day</span>
+                    <div className="mt-4 sm:mt-6 flex flex-wrap gap-3 sm:gap-4 text-[10px] sm:text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1.5 sm:gap-2">
+                            <span className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full bg-green-500" />
+                            <span>Completed</span>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                            <span className="h-3 w-3 rounded-full border border-border bg-background ring-2 ring-primary/40" />
+                        <div className="flex items-center gap-1.5 sm:gap-2">
+                            <span className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded-full border border-border bg-background ring-2 ring-primary/40" />
                             <span>Today</span>
                         </div>
                     </div>

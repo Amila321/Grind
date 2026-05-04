@@ -34,13 +34,13 @@ export function SendInvitation({ onSend }: SendInvitationProps) {
     }
 
     return (
-        <div className="rounded-xl border border-border bg-card p-5">
-            <div className="mb-4 flex items-center gap-2">
+        <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
+            <div className="mb-3 sm:mb-4 flex items-center gap-2">
                 <UserPlus className="h-5 w-5 text-muted-foreground" />
                 <h3 className="font-medium text-foreground">Add Friend</h3>
             </div>
 
-            <form onSubmit={handleSubmit} className="flex gap-3">
+            <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
                 <div className="relative flex-1">
                     <input
                         type="text"
@@ -51,13 +51,13 @@ export function SendInvitation({ onSend }: SendInvitationProps) {
                             setSuccess(null);
                         }}
                         placeholder="Enter username"
-                        className="w-full rounded-lg border border-border bg-input py-2.5 px-4 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:outline-none focus:ring-2 focus:border-ring focus:ring-ring/20"
+                        className="w-full rounded-lg border border-border bg-input py-2.5 px-4 text-base text-foreground placeholder:text-muted-foreground transition-colors focus:outline-none focus:ring-2 focus:border-ring focus:ring-ring/20"
                     />
                 </div>
                 <button
                     type="submit"
                     disabled={!isValid || isLoading}
-                    className="rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="w-full sm:w-auto rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                     {isLoading ? "Sending..." : "Send Request"}
                 </button>
