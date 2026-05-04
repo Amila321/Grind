@@ -64,12 +64,12 @@ export function FriendCard({ friend, onRemove }: FriendCardProps) {
             role="button"
             tabIndex={0}
         >
-            <div className="flex items-center gap-4 p-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground transition-transform hover:scale-110">
+            <div className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4">
+                <div className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground transition-transform hover:scale-110">
                     {initial}
                 </div>
                 <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium text-foreground hover:underline">
+                    <p className="truncate font-medium text-foreground hover:underline text-sm sm:text-base">
                         @{friend.username}
                     </p>
                 </div>
@@ -79,7 +79,7 @@ export function FriendCard({ friend, onRemove }: FriendCardProps) {
                         type="button"
                         onClick={handleRemove}
                         disabled={isRemoving}
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition-colors hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
+                        className="flex h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-background text-muted-foreground transition-colors hover:border-destructive/50 hover:bg-destructive/10 hover:text-destructive disabled:cursor-not-allowed disabled:opacity-50"
                         aria-label={`Remove ${friend.username} from friends`}
                     >
                         <UserMinus className="h-4 w-4" />
@@ -103,12 +103,12 @@ export function FriendCard({ friend, onRemove }: FriendCardProps) {
                         <p className="mb-3 text-sm text-destructive">{error}</p>
                     )}
 
-                    <div className="flex gap-3">
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                         <button
                             type="button"
                             onClick={handleRemove}
                             disabled={isRemoving}
-                            className="group relative flex items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-red-500 to-rose-600 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-red-500/25 transition-all duration-200 hover:scale-[1.02] hover:shadow-lg hover:shadow-red-500/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
+                            className="group relative flex items-center justify-center gap-2 overflow-hidden rounded-xl bg-gradient-to-r from-red-500 to-rose-600 px-4 sm:px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-red-500/25 transition-all duration-200 hover:scale-[1.02] hover:shadow-lg hover:shadow-red-500/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
                             aria-label="Confirm removal"
                         >
                             <span className="absolute inset-0 bg-gradient-to-r from-red-600 to-rose-700 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
@@ -121,7 +121,7 @@ export function FriendCard({ friend, onRemove }: FriendCardProps) {
                                 ) : (
                                     <>
                                         <Trash2 className="h-4 w-4" />
-                                        Remove Friend
+                                        Remove
                                     </>
                                 )}
                             </span>
@@ -130,7 +130,7 @@ export function FriendCard({ friend, onRemove }: FriendCardProps) {
                             type="button"
                             onClick={handleCancelConfirm}
                             disabled={isRemoving}
-                            className="flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-5 py-2.5 text-sm font-medium text-muted-foreground transition-all duration-200 hover:border-foreground/20 hover:bg-secondary hover:text-foreground active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                            className="flex items-center justify-center gap-2 rounded-xl border border-border bg-background px-4 sm:px-5 py-2.5 text-sm font-medium text-muted-foreground transition-all duration-200 hover:border-foreground/20 hover:bg-secondary hover:text-foreground active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
                             aria-label="Cancel removal"
                         >
                             Cancel

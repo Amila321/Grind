@@ -132,7 +132,7 @@ export function AuthForm({ mode }: AuthFormProps) {
                     </p>
                 </div>
 
-                <div className="rounded-2xl border border-border bg-card p-8 shadow-sm">
+                <div className="rounded-2xl border border-border bg-card p-5 sm:p-8 shadow-sm">
                     <form className="space-y-5" onSubmit={handleSubmit}>
                         <div className="space-y-2">
                             <label
@@ -154,7 +154,7 @@ export function AuthForm({ mode }: AuthFormProps) {
                                     onChange={(e) => handleUsernameChange(e.target.value)}
                                     onBlur={() => handleBlur("username")}
                                     placeholder="Enter your username"
-                                    className={`w-full rounded-lg border bg-input py-3 pl-10 pr-4 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:outline-none focus:ring-2 ${
+                                    className={`w-full rounded-lg border bg-input py-3 pl-10 pr-4 text-base text-foreground placeholder:text-muted-foreground transition-colors focus:outline-none focus:ring-2 ${
                                         errors.username
                                             ? "border-destructive focus:border-destructive focus:ring-destructive/20"
                                             : "border-border focus:border-ring focus:ring-ring/20"
@@ -187,7 +187,7 @@ export function AuthForm({ mode }: AuthFormProps) {
                                     onChange={(e) => handlePasswordChange(e.target.value)}
                                     onBlur={() => handleBlur("password")}
                                     placeholder="Enter your password"
-                                    className={`w-full rounded-lg border bg-input py-3 pl-10 pr-12 text-sm text-foreground placeholder:text-muted-foreground transition-colors focus:outline-none focus:ring-2 ${
+                                    className={`w-full rounded-lg border bg-input py-3 pl-10 pr-12 text-base text-foreground placeholder:text-muted-foreground transition-colors focus:outline-none focus:ring-2 ${
                                         errors.password
                                             ? "border-destructive focus:border-destructive focus:ring-destructive/20"
                                             : "border-border focus:border-ring focus:ring-ring/20"

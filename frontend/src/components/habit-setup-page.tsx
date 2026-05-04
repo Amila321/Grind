@@ -167,7 +167,7 @@ export function HabitSetupPage() {
 
     if (isLoading) {
         return (
-            <main className="min-h-screen flex items-center justify-center bg-background">
+            <main className="min-h-screen flex items-center justify-center bg-background px-4">
                 <div className="flex items-center gap-2 text-muted-foreground">
                     <Loader2 className="h-5 w-5 animate-spin" />
                     <span>Loading habits...</span>
@@ -177,13 +177,13 @@ export function HabitSetupPage() {
     }
 
     return (
-        <main className="min-h-screen p-8 bg-background">
+        <main className="min-h-screen px-4 py-6 sm:px-6 sm:py-8 bg-background">
             <div className="mx-auto max-w-2xl space-y-6">
                 <div className="text-center space-y-2">
-                    <h1 className="text-2xl font-bold text-foreground">
+                    <h1 className="text-xl sm:text-2xl font-bold text-foreground">
                         Manage Your Habits
                     </h1>
-                    <p className="text-muted-foreground">
+                    <p className="text-sm sm:text-base text-muted-foreground">
                         Add, edit and delete your daily habits. Changes are visible on your dashboard immediately.
                     </p>
                 </div>
@@ -194,7 +194,7 @@ export function HabitSetupPage() {
                     </div>
                 )}
 
-                <form onSubmit={handleAddHabit} className="rounded-xl border border-border bg-card p-6 space-y-4">
+                <form onSubmit={handleAddHabit} className="rounded-xl border border-border bg-card p-4 sm:p-6 space-y-4">
                     <h2 className="font-semibold text-foreground">Add New Habit</h2>
 
                     <div className="space-y-3">
@@ -208,14 +208,14 @@ export function HabitSetupPage() {
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
                                 placeholder="e.g., Morning exercise"
-                                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary text-base"
                                 disabled={isAdding}
                             />
                         </div>
 
                         <div>
                             <label htmlFor="description" className="block text-sm font-medium text-foreground mb-1">
-                                Description optional
+                                Description <span className="text-muted-foreground font-normal">(optional)</span>
                             </label>
                             <input
                                 id="description"
@@ -223,7 +223,7 @@ export function HabitSetupPage() {
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 placeholder="e.g., 30 minutes of cardio"
-                                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary text-base"
                                 disabled={isAdding}
                             />
                         </div>
@@ -232,7 +232,7 @@ export function HabitSetupPage() {
                     <button
                         type="submit"
                         disabled={isAdding || !title.trim()}
-                        className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {isAdding ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -243,7 +243,7 @@ export function HabitSetupPage() {
                     </button>
                 </form>
 
-                <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+                <div className="rounded-xl border border-border bg-card p-4 sm:p-6 space-y-4">
                     <div className="flex items-center justify-between">
                         <h2 className="font-semibold text-foreground">
                             Your Habits ({habits.length})
@@ -262,7 +262,7 @@ export function HabitSetupPage() {
                                 return (
                                     <li
                                         key={habit.id}
-                                        className={`rounded-lg border border-border bg-background p-4 transition-opacity ${
+                                        className={`rounded-lg border border-border bg-background p-3 sm:p-4 transition-opacity ${
                                             deletingId === habit.id ? "opacity-50" : ""
                                         }`}
                                     >
@@ -271,23 +271,23 @@ export function HabitSetupPage() {
                                                 <input
                                                     value={editTitle}
                                                     onChange={(e) => setEditTitle(e.target.value)}
-                                                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                                    className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-foreground focus:outline-none focus:ring-2 focus:ring-primary text-base"
                                                     placeholder="Habit title"
                                                 />
 
                                                 <input
                                                     value={editDescription}
                                                     onChange={(e) => setEditDescription(e.target.value)}
-                                                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                                                    className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-foreground focus:outline-none focus:ring-2 focus:ring-primary text-base"
                                                     placeholder="Habit description"
                                                 />
 
-                                                <div className="flex gap-2">
+                                                <div className="flex flex-col sm:flex-row gap-2">
                                                     <button
                                                         type="button"
                                                         onClick={() => handleUpdateHabit(habit)}
                                                         disabled={savingId === habit.id || !editTitle.trim()}
-                                                        className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                                                        className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-3 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                                                     >
                                                         {savingId === habit.id ? (
                                                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -300,7 +300,7 @@ export function HabitSetupPage() {
                                                     <button
                                                         type="button"
                                                         onClick={cancelEditing}
-                                                        className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-secondary"
+                                                        className="inline-flex items-center justify-center gap-2 rounded-lg border border-border px-3 py-2.5 text-sm font-medium text-foreground hover:bg-secondary"
                                                     >
                                                         <X className="h-4 w-4" />
                                                         Cancel
@@ -308,17 +308,17 @@ export function HabitSetupPage() {
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div className="flex items-start justify-between gap-4">
+                                            <div className="flex items-start justify-between gap-3">
                                                 <div className="space-y-1 min-w-0 flex-1">
-                                                    <p className="font-medium text-foreground">{habit.title}</p>
+                                                    <p className="font-medium text-foreground break-words">{habit.title}</p>
                                                     {habit.description && (
-                                                        <p className="text-sm text-muted-foreground truncate">
+                                                        <p className="text-sm text-muted-foreground break-words">
                                                             {habit.description}
                                                         </p>
                                                     )}
                                                 </div>
 
-                                                <div className="flex gap-1">
+                                                <div className="flex gap-1 shrink-0">
                                                     <button
                                                         type="button"
                                                         onClick={() => startEditing(habit)}
@@ -349,16 +349,6 @@ export function HabitSetupPage() {
                             })}
                         </ul>
                     )}
-                </div>
-
-                <div className="text-center">
-                    <button
-                        type="button"
-                        onClick={() => navigate("/mainapp")}
-                        className="text-sm text-muted-foreground hover:text-foreground underline"
-                    >
-                        Back to Dashboard
-                    </button>
                 </div>
             </div>
         </main>
