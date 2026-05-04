@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useHabits, type DashboardResponse, type DashboardHabitResponse } from "../hooks/useHabits";
 import { useDashboardRealtime, type HabitRealtimeEvent } from "../hooks/useDashboardRealtime";
 import { useDebouncedCallback } from "../hooks/useDebounce";
-import { Loader2, Check, Plus, Wifi, WifiOff, AlertCircle } from "lucide-react";
+import { Loader2, Check, Plus, Wifi, WifiOff, AlertCircle, Settings2, Users, CheckCircle2, Circle, ChevronRight, Activity } from "lucide-react";
 
 type StoredUser = {
     id: number;
@@ -13,7 +13,7 @@ type StoredUser = {
 function getHabitEventLabel(type: HabitRealtimeEvent["type"]) {
     switch (type) {
         case "HABIT_CREATED":
-            return "created";
+            return "created a new habit";
         case "HABIT_UPDATED":
             return "updated";
         case "HABIT_DELETED":
@@ -40,144 +40,266 @@ function HabitItem({
     isToggling?: boolean;
     isOptimistic?: boolean;
 }) {
+    const isCompleted = habit.completedToday;
+    
     return (
-        <li className="flex items-center gap-3 py-2">
+        <li className={`flex items-center gap-3 py-3 px-3 -mx-3 rounded-lg transition-colors ${
+            isOwn ? "hover:bg-muted/50" : ""
+        } ${isOptimistic ? "opacity-70" : ""}`}>
             {isOwn ? (
                 <button
                     type="button"
                     onClick={onToggle}
                     disabled={isToggling}
-                    className={`shrink-0 flex items-center justify-center h-6 w-6 rounded-full border-2 transition-colors ${
-                        habit.completedToday
-                            ? "border-green-500 bg-green-500 text-white"
-                            : "border-muted-foreground hover:border-primary"
-                    } ${isToggling ? "opacity-50" : ""} ${isOptimistic ? "opacity-70" : ""}`}
-                    aria-label={habit.completedToday ? `Mark ${habit.title} as incomplete` : `Mark ${habit.title} as complete`}
+                    className={`shrink-0 flex items-center justify-center h-6 w-6 rounded-md border-2 transition-all ${
+                        isCompleted
+                            ? "border-emerald-500 bg-emerald-500 text-white"
+                            : "border-muted-foreground/40 hover:border-emerald-500 hover:bg-emerald-50"
+                    } ${isToggling ? "opacity-50 scale-95" : ""}`}
+                    aria-label={isCompleted ? `Mark ${habit.title} as incomplete` : `Mark ${habit.title} as complete`}
                 >
                     {isToggling ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : habit.completedToday ? (
-                        <Check className="h-3 w-3" />
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : isCompleted ? (
+                        <Check className="h-3.5 w-3.5" />
                     ) : null}
                 </button>
             ) : (
                 <span
-                    className={`shrink-0 flex items-center justify-center h-6 w-6 rounded-full border-2 ${
-                        habit.completedToday
-                            ? "border-green-500 bg-green-500 text-white"
-                            : "border-muted-foreground"
+                    className={`shrink-0 flex items-center justify-center h-5 w-5 rounded-full ${
+                        isCompleted
+                            ? "text-emerald-500"
+                            : "text-muted-foreground/40"
                     }`}
                 >
-                    {habit.completedToday ? <Check className="h-3 w-3" /> : null}
+                    {isCompleted ? <CheckCircle2 className="h-5 w-5" /> : <Circle className="h-5 w-5" />}
                 </span>
             )}
             <div className="min-w-0 flex-1">
-                <p className={`text-sm font-medium ${habit.completedToday ? "text-muted-foreground line-through" : "text-foreground"}`}>
+                <p className={`text-sm font-medium transition-colors ${
+                    isCompleted ? "text-muted-foreground line-through" : "text-foreground"
+                }`}>
                     {habit.title}
                 </p>
                 {habit.description && (
-                    <p className="text-xs text-muted-foreground truncate">{habit.description}</p>
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">{habit.description}</p>
                 )}
             </div>
+            {isCompleted && (
+                <span className="shrink-0 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                    Done
+                </span>
+            )}
         </li>
     );
 }
 
-function UserHabitCard({
+function MyHabitsCard({
     username,
     habits,
     completedCount,
     totalCount,
-    isOwn,
-    userId,
     onToggleHabit,
     togglingHabitId,
     optimisticHabitIds,
-    onUserClick,
+    onManageHabits,
 }: {
     username: string;
     habits: DashboardHabitResponse[];
     completedCount: number;
     totalCount: number;
-    isOwn: boolean;
-    userId?: number;
-    onToggleHabit?: (habitId: number, completedToday: boolean) => void;
-    togglingHabitId?: number | null;
-    optimisticHabitIds?: Set<number>;
-    onUserClick?: (userId: number) => void;
+    onToggleHabit: (habitId: number, completedToday: boolean) => void;
+    togglingHabitId: number | null;
+    optimisticHabitIds: Set<number>;
+    onManageHabits: () => void;
 }) {
     const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+    const allComplete = completedCount === totalCount && totalCount > 0;
 
     return (
-        <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-            <div className="flex items-center justify-between">
-                <button
-                    type="button"
-                    onClick={() => onUserClick?.(userId!)}
-                    disabled={isOwn || !userId}
-                    className={`flex items-center gap-3 ${!isOwn && userId ? "cursor-pointer hover:opacity-80" : ""}`}
-                >
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
-                        {username.charAt(0).toUpperCase()}
+        <div className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+            {/* Header */}
+            <div className="px-5 py-4 border-b border-border bg-muted/30">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+                            {username.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <h3 className="font-semibold text-foreground">Today&apos;s Progress</h3>
+                            <p className="text-xs text-muted-foreground">
+                                {completedCount} of {totalCount} habits completed
+                            </p>
+                        </div>
                     </div>
-                    <div className="text-left">
-                        <h3 className="font-semibold text-foreground">
-                            {isOwn ? "You" : username}
-                        </h3>
-                        <p className="text-xs text-muted-foreground">
-                            {completedCount} / {totalCount} completed
-                        </p>
-                    </div>
-                </button>
-                <div className="text-right">
-                    <span className="text-lg font-bold text-foreground">{Math.round(progress)}%</span>
+                    <button
+                        type="button"
+                        onClick={onManageHabits}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors"
+                    >
+                        <Settings2 className="h-4 w-4" />
+                        <span className="hidden sm:inline">Manage</span>
+                    </button>
                 </div>
             </div>
 
-            {/* Progress bar */}
-            <div className="h-2 rounded-full bg-muted overflow-hidden">
-                <div
-                    className="h-full bg-green-500 transition-all duration-300"
-                    style={{ width: `${progress}%` }}
-                />
+            {/* Progress Section */}
+            <div className="px-5 py-4">
+                <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-muted-foreground">Daily progress</span>
+                    <span className={`text-lg font-bold ${allComplete ? "text-emerald-600" : "text-foreground"}`}>
+                        {Math.round(progress)}%
+                    </span>
+                </div>
+                <div className="h-2.5 rounded-full bg-muted overflow-hidden">
+                    <div
+                        className={`h-full transition-all duration-500 ease-out ${
+                            allComplete ? "bg-emerald-500" : "bg-emerald-500"
+                        }`}
+                        style={{ width: `${progress}%` }}
+                    />
+                </div>
+                {allComplete && (
+                    <p className="text-sm text-emerald-600 font-medium mt-2 flex items-center gap-1.5">
+                        <CheckCircle2 className="h-4 w-4" />
+                        All habits completed! Great job!
+                    </p>
+                )}
             </div>
 
-            {/* Habits list */}
-            {habits.length > 0 ? (
-                <ul className="divide-y divide-border">
+            {/* Habits List */}
+            <div className="px-5 pb-5">
+                <ul className="space-y-1">
                     {habits.map((habit) => (
                         <HabitItem
                             key={habit.id}
                             habit={habit}
-                            isOwn={isOwn}
-                            onToggle={isOwn && onToggleHabit ? () => onToggleHabit(habit.id, habit.completedToday) : undefined}
+                            isOwn={true}
+                            onToggle={() => onToggleHabit(habit.id, habit.completedToday)}
                             isToggling={togglingHabitId === habit.id}
-                            isOptimistic={optimisticHabitIds?.has(habit.id)}
+                            isOptimistic={optimisticHabitIds.has(habit.id)}
                         />
                     ))}
                 </ul>
-            ) : (
-                <p className="text-sm text-muted-foreground text-center py-2">No habits</p>
+            </div>
+        </div>
+    );
+}
+
+function FriendCard({
+    username,
+    userId,
+    habits,
+    completedCount,
+    totalCount,
+    onUserClick,
+}: {
+    username: string;
+    userId: number;
+    habits: DashboardHabitResponse[];
+    completedCount: number;
+    totalCount: number;
+    onUserClick: (userId: number) => void;
+}) {
+    const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+    const allComplete = completedCount === totalCount && totalCount > 0;
+
+    return (
+        <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+            {/* Clickable Header */}
+            <button
+                type="button"
+                onClick={() => onUserClick(userId)}
+                className="w-full px-4 py-3 flex items-center justify-between hover:bg-muted/50 transition-colors group"
+            >
+                <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-sm font-semibold text-secondary-foreground group-hover:ring-2 group-hover:ring-primary/20 transition-all">
+                        {username.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="text-left">
+                        <h4 className="font-medium text-foreground group-hover:text-primary transition-colors">
+                            {username}
+                        </h4>
+                        <p className="text-xs text-muted-foreground">
+                            {completedCount}/{totalCount} today
+                        </p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className={`text-sm font-semibold ${allComplete ? "text-emerald-600" : "text-foreground"}`}>
+                        {Math.round(progress)}%
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                </div>
+            </button>
+
+            {/* Progress Bar */}
+            <div className="px-4 pb-3">
+                <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div
+                        className={`h-full transition-all duration-300 ${
+                            allComplete ? "bg-emerald-500" : "bg-emerald-500/70"
+                        }`}
+                        style={{ width: `${progress}%` }}
+                    />
+                </div>
+            </div>
+
+            {/* Compact Habits List */}
+            {habits.length > 0 && (
+                <div className="px-4 pb-3">
+                    <ul className="space-y-1">
+                        {habits.slice(0, 4).map((habit) => (
+                            <HabitItem
+                                key={habit.id}
+                                habit={habit}
+                                isOwn={false}
+                            />
+                        ))}
+                        {habits.length > 4 && (
+                            <li className="text-xs text-muted-foreground py-1 pl-8">
+                                +{habits.length - 4} more habits
+                            </li>
+                        )}
+                    </ul>
+                </div>
             )}
         </div>
     );
 }
 
 function ConnectionStatus({ status }: { status: string }) {
-    const statusConfig: Record<string, { icon: typeof Wifi; color: string; label: string; animate?: boolean }> = {
-        CONNECTED: { icon: Wifi, color: "text-green-500", label: "Live" },
-        CONNECTING: { icon: Loader2, color: "text-yellow-500", label: "Connecting", animate: true },
-        DISCONNECTED: { icon: WifiOff, color: "text-muted-foreground", label: "Offline" },
-        ERROR: { icon: AlertCircle, color: "text-red-500", label: "Error" },
+    const statusConfig: Record<string, { icon: typeof Wifi; color: string; bgColor: string; label: string; animate?: boolean }> = {
+        CONNECTED: { icon: Wifi, color: "text-emerald-600", bgColor: "bg-emerald-50", label: "Live" },
+        CONNECTING: { icon: Loader2, color: "text-amber-600", bgColor: "bg-amber-50", label: "Connecting", animate: true },
+        DISCONNECTED: { icon: WifiOff, color: "text-muted-foreground", bgColor: "bg-muted", label: "Offline" },
+        ERROR: { icon: AlertCircle, color: "text-red-600", bgColor: "bg-red-50", label: "Error" },
     };
 
     const config = statusConfig[status as keyof typeof statusConfig] ?? statusConfig.DISCONNECTED;
     const Icon = config.icon;
 
     return (
-        <div className={`flex items-center gap-1.5 text-xs ${config.color}`}>
+        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${config.color} ${config.bgColor}`}>
             <Icon className={`h-3 w-3 ${config.animate ? "animate-spin" : ""}`} />
             <span>{config.label}</span>
+        </div>
+    );
+}
+
+function RealtimeActivityBanner({ event }: { event: HabitRealtimeEvent }) {
+    return (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-50 border border-blue-100 text-blue-700">
+            <div className="shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-blue-100">
+                <Activity className="h-4 w-4 text-blue-600" />
+            </div>
+            <p className="text-sm">
+                <span className="font-medium">{event.actor.username}</span>
+                {" "}
+                {getHabitEventLabel(event.type)}
+                {" "}
+                <span className="font-medium">{event.habitTitle}</span>
+            </p>
         </div>
     );
 }
@@ -329,9 +451,9 @@ export function MainAppPage() {
     if (isLoading) {
         return (
             <main className="min-h-screen flex items-center justify-center bg-background">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    <span>Loading dashboard...</span>
+                <div className="flex flex-col items-center gap-3 text-muted-foreground">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <span className="text-sm font-medium">Loading your dashboard...</span>
                 </div>
             </main>
         );
@@ -340,116 +462,112 @@ export function MainAppPage() {
     const hasActiveHabits = dashboard?.currentUser?.habits && dashboard.currentUser.habits.length > 0;
 
     return (
-        <main className="min-h-screen p-8 bg-background">
-            <div className="mx-auto max-w-3xl space-y-6">
-                {/* Header with user info and connection status */}
-                <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-lg font-semibold text-primary-foreground">
-                                {user?.username?.charAt(0).toUpperCase() ?? "?"}
-                            </div>
-                            <div>
-                                <h1 className="text-xl font-semibold text-foreground">
-                                    {user?.username ?? "No user"}
-                                </h1>
-                                <p className="text-sm text-muted-foreground">
-                                    Dashboard
-                                </p>
-                            </div>
-                        </div>
-                        <div>
-                            <ConnectionStatus status={wsStatus} />
-                        </div>
+        <main className="min-h-screen bg-background">
+            <div className="mx-auto max-w-2xl px-4 py-6 sm:px-6 sm:py-8 space-y-6">
+                {/* Header */}
+                <header className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+                            Hey, {user?.username ?? "there"}
+                        </h1>
+                        <p className="text-sm text-muted-foreground mt-0.5">
+                            {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+                        </p>
                     </div>
-                </div>
+                    <ConnectionStatus status={wsStatus} />
+                </header>
+
+                {/* Realtime Activity */}
+                {lastEvent && (
+                    <RealtimeActivityBanner event={lastEvent} />
+                )}
 
                 {/* Error Display */}
                 {error && (
-                    <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700 text-sm">
-                        {error}
+                    <div className="flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-red-700">
+                        <AlertCircle className="h-5 w-5 shrink-0" />
+                        <p className="text-sm">{error}</p>
                     </div>
                 )}
 
-                {/* Realtime Activity Panel */}
-                {lastEvent && (
-                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-blue-700 text-sm">
-                        <span className="font-medium">{lastEvent.actor.username}</span>
-                        {" "}
-                        {getHabitEventLabel(lastEvent.type)}
-                        {" "}
-                        <span className="font-medium">{lastEvent.habitTitle}</span>
-                    </div>
-                )}
-
-                {/* No habits - prompt to set up */}
+                {/* Empty State - No habits */}
                 {!hasActiveHabits && (
-                    <div className="rounded-xl border border-border bg-card p-8 text-center space-y-4">
-                        <div className="flex justify-center">
-                            <div className="h-12 w-12 rounded-full border-2 border-muted-foreground" />
+                    <section className="rounded-2xl border-2 border-dashed border-border bg-card p-8 sm:p-12 text-center">
+                        <div className="flex justify-center mb-4">
+                            <div className="flex items-center justify-center h-16 w-16 rounded-full bg-muted">
+                                <Plus className="h-8 w-8 text-muted-foreground" />
+                            </div>
                         </div>
-                        <div className="space-y-2">
-                            <h2 className="text-lg font-semibold text-foreground">No Habits Yet</h2>
-                            <p className="text-muted-foreground">
-                                You haven&apos;t set up any habits yet. Add your first habits to start tracking!
-                            </p>
-                        </div>
+                        <h2 className="text-xl font-semibold text-foreground mb-2">Start Your Journey</h2>
+                        <p className="text-muted-foreground max-w-sm mx-auto mb-6">
+                            You haven&apos;t set up any habits yet. Create your first habits and start building better routines!
+                        </p>
                         <button
                             type="button"
                             onClick={() => navigate("/habits/setup")}
-                            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+                            className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 hover:scale-[1.02] active:scale-[0.98]"
                         >
                             <Plus className="h-4 w-4" />
-                            Set Up Habits
+                            Create Your First Habit
                         </button>
-                    </div>
+                    </section>
                 )}
 
-                {/* Current User Habits */}
+                {/* My Habits Section */}
                 {hasActiveHabits && dashboard?.currentUser && (
-                    <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                            <h2 className="text-lg font-semibold text-foreground">Your Habits</h2>
-                            <button
-                                type="button"
-                                onClick={() => navigate("/habits/setup")}
-                                className="text-sm text-primary hover:underline"
-                            >
-                                Edit Habits
-                            </button>
+                    <section>
+                        <div className="flex items-center gap-2 mb-3">
+                            <CheckCircle2 className="h-5 w-5 text-primary" />
+                            <h2 className="text-lg font-semibold text-foreground">My Habits</h2>
                         </div>
-                        <UserHabitCard
+                        <MyHabitsCard
                             username={dashboard.currentUser.user.username}
                             habits={dashboard.currentUser.habits}
                             completedCount={dashboard.currentUser.completedCount}
                             totalCount={dashboard.currentUser.totalCount}
-                            isOwn={true}
                             onToggleHabit={handleToggleHabit}
                             togglingHabitId={togglingHabitId}
                             optimisticHabitIds={optimisticHabitIds}
+                            onManageHabits={() => navigate("/habits/setup")}
                         />
-                    </div>
+                    </section>
                 )}
 
                 {/* Friends Section */}
                 {dashboard?.friends && dashboard.friends.length > 0 && (
-                    <div className="space-y-3">
-                        <h2 className="text-lg font-semibold text-foreground">Friends</h2>
-                        <div className="space-y-4">
+                    <section>
+                        <div className="flex items-center gap-2 mb-3">
+                            <Users className="h-5 w-5 text-muted-foreground" />
+                            <h2 className="text-lg font-semibold text-foreground">Friends&apos; Progress</h2>
+                            <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                                {dashboard.friends.length}
+                            </span>
+                        </div>
+                        <div className="grid gap-3">
                             {dashboard.friends.map((friend) => (
-                                <UserHabitCard
+                                <FriendCard
                                     key={friend.user.id}
                                     username={friend.user.username}
                                     userId={friend.user.id}
                                     habits={friend.habits}
                                     completedCount={friend.completedCount}
                                     totalCount={friend.totalCount}
-                                    isOwn={false}
                                     onUserClick={(userId) => navigate(`/profile/${userId}`)}
                                 />
                             ))}
                         </div>
-                    </div>
+                    </section>
+                )}
+
+                {/* Empty Friends State */}
+                {dashboard?.friends && dashboard.friends.length === 0 && hasActiveHabits && (
+                    <section className="rounded-xl border border-border bg-card p-6 text-center">
+                        <Users className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                        <h3 className="font-medium text-foreground mb-1">No friends yet</h3>
+                        <p className="text-sm text-muted-foreground">
+                            Add friends to see their progress and stay motivated together.
+                        </p>
+                    </section>
                 )}
             </div>
         </main>
